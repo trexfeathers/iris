@@ -123,44 +123,48 @@ def as_cube(pandas_array, copy=True, calendars=None,
 
     phenom_columns_flat = []
     for item in phenom_columns:
-        if type(item) == str:
-            # Need to avoid extend() treating a string as an iterable.
+        if type(item) == int:
+            # If item is a single column index - 1-column phenomenon.
             phenom_columns_flat.append(item)
         else:
+            # If item is a list of column indices - multi-column phenomenon.
             phenom_columns_flat.extend(item)
 
-    coord_columns = pandas_array.columns.difference(phenom_columns_flat +
-                                                    cell_measure_columns)
-    cell_measure_list = [(cm, 0) for cm in pandas_array[cell_measure_columns]]
+    coord_columns = pandas_array.columns.difference(
+        phenom_columns_flat + cell_measure_columns).columns.getloc()
+    # cell_measure_list = [(cm, 0) for cm in pandas_array[cell_measure_columns]]
 
+    cube_list = []
     for item in phenom_columns:
-        data = np.array(pandas_array[item], copy=copy, order=order)
+        pandas_subarray = pandas_array.iloc[:, item]
+        data = np.array(pandas_subarray, copy=copy, order=order)
         if np.isreal(data):
             data = np.ma.masked_invalid(data)
         cube = Cube(data)
+        _add_iris_coord(cube, "index", pandas_array.index, 0,
+                        calendars.get(0, None))
+        for column_ix in coord_columns:
+            column = pandas_array.iloc[:, column_ix]
+            _add_iris_coord(cube, column.name, column.data, 0,
+                            calendars.get(0, None))
+        for column_ix in cell_measure_columns:
+            column = pandas_array.iloc[:, column_ix]
+            cell_measure = iris.coords.CellMeasure(column.data)
+            cell_measure.rename(column.name)
+            cube.add_cell_measure(cell_measure, 0)
 
-        if type(item) == str:
-            cube.name(item)
+        if pandas_subarray.ndim == 1:
+            cube.rename(pandas_subarray.columns[0].name)
+        elif pandas_subarray.ndim == 2:
+            _add_iris_coord(cube, "columns", pandas_subarray.columns.values, 1,
+                            calendars.get(1, None))
 
-    for column in phenom_columns:
-        data = np.array(pandas_array[column], copy=copy, order=order)
-        if np.isreal(data):
-            data = np.ma.masked_invalid(data)
-        cube = Cube(data=data, cell_measures_and_dims=cell_measure_columns)
-        cube.name(column)
+        cube_list.append(cube)
 
-
-    data = np.array(pandas_array, copy=copy, order=order)
-    cube = Cube(np.ma.masked_invalid(data, copy=False))
-
-
-
-    _add_iris_coord(cube, "index", pandas_array.index, 0,
-                    calendars.get(0, None))
-    if pandas_array.ndim == 2:
-        _add_iris_coord(cube, "columns", pandas_array.columns.values, 1,
-                        calendars.get(1, None))
-    return cube
+    if len(cube_list) == 1:
+        return cube_list[0]
+    else:
+        return cube_list
 
 
 def _as_pandas_coord(coord):
