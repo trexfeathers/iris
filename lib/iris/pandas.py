@@ -76,7 +76,8 @@ def _add_iris_coord(cube, name, points, dim, calendar=None):
         cube.add_aux_coord(coord, dim)
 
 
-def as_cube(pandas_array, copy=True, calendars=None):
+def as_cube(pandas_array, copy=True, calendars=None,
+            phenom_columns=None, cell_measure_columns=None):
     """
     Convert a Pandas array into an Iris cube.
 
@@ -110,8 +111,50 @@ def as_cube(pandas_array, copy=True, calendars=None):
     # 1.6 doesn't. Since we don't care about preserving the order we can
     # just force it back to C-order.)
     order = 'C' if copy else 'A'
+
+    if phenom_columns is None:
+        phenom_columns = [pandas_array.columns.values]
+    if cell_measure_columns is None:
+        cell_measure_columns = []
+
+    for arg in ('phenom_columns', 'cell_measure_columns'):
+        if type(locals()[arg]) != list:
+            raise TypeError("{} type must be list".format(arg))
+
+    phenom_columns_flat = []
+    for item in phenom_columns:
+        if type(item) == str:
+            # Need to avoid extend() treating a string as an iterable.
+            phenom_columns_flat.append(item)
+        else:
+            phenom_columns_flat.extend(item)
+
+    coord_columns = pandas_array.columns.difference(phenom_columns_flat +
+                                                    cell_measure_columns)
+    cell_measure_list = [(cm, 0) for cm in pandas_array[cell_measure_columns]]
+
+    for item in phenom_columns:
+        data = np.array(pandas_array[item], copy=copy, order=order)
+        if np.isreal(data):
+            data = np.ma.masked_invalid(data)
+        cube = Cube(data)
+
+        if type(item) == str:
+            cube.name(item)
+
+    for column in phenom_columns:
+        data = np.array(pandas_array[column], copy=copy, order=order)
+        if np.isreal(data):
+            data = np.ma.masked_invalid(data)
+        cube = Cube(data=data, cell_measures_and_dims=cell_measure_columns)
+        cube.name(column)
+
+
     data = np.array(pandas_array, copy=copy, order=order)
     cube = Cube(np.ma.masked_invalid(data, copy=False))
+
+
+
     _add_iris_coord(cube, "index", pandas_array.index, 0,
                     calendars.get(0, None))
     if pandas_array.ndim == 2:
