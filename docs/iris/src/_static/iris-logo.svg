@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
-<svg xmlns="http://www.w3.org/2000/svg" width="587.695" height="256">
-	<svg id="logo_group" viewBox="0 0 720 720" preserveAspectRatio="xMinYMin meet">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+	<svg id="logo_group" viewBox="0 0 720 720">
 		<defs>
 			<linearGradient y1="0%" y2="100%" id="background_gradient">
 				<stop offset="0" stop-color="#13385d"/>
@@ -100,5 +100,4 @@
 			<circle cx="50%" cy="50%" r="50%" fill="url(#land_gradient)" clip-path="url(#land_clip)" id="land"/>
 		</g>
 	</svg>
-	<text x="263.8975" y="199.68" font-size="153.6pt" font-family="georgia">Iris</text>
 </svg>
