@@ -1,12 +1,12 @@
 <?xml version="1.0" ?>
-<svg xmlns="http://www.w3.org/2000/svg" width="587.695" height="256">
+<svg xmlns="http://www.w3.org/2000/svg" width="588" height="256">
 	<svg id="logo_group" viewBox="0 0 720 720" preserveAspectRatio="xMinYMin meet">
 		<defs>
 			<linearGradient y1="0%" y2="100%" id="background_gradient">
 				<stop offset="0" stop-color="#13385d"/>
 				<stop offset="1" stop-color="#272b2c"/>
 			</linearGradient>
-			<clipPath id="land_clip">
+			<clipPath id="land_clip_-30.0">
 				<path d="M 606.825859 494.23432  L 605.099049 496.723191  L 620.173524 460.531176  L 630.188327 434.112458  L 629.310614 439.099243  L 623.594331 457.045641  L 615.307596 477.587973  L 611.066728 485.911147  z "/>
 				<path d="M 217.662677 406.936961  L 214.167087 406.640953  L 213.468804 406.036049  L 217.319093 403.071749  z "/>
 				<path d="M 204.526186 363.489547  L 198.287375 363.117795  L 198.466888 361.012394  L 202.178537 361.383712  z "/>
@@ -97,8 +97,8 @@
 			<rect height="100%" width="100%" fill="url(#background_gradient)" id="background"/>
 			<circle cx="50%" cy="50%" r="40.625%" fill="url(#glow_gradient)" filter="url(#glow_blur)" stroke="#ffffff" stroke-width="2" stroke-opacity="0.797414" id="glow"/>
 			<circle cx="50%" cy="50%" r="39.453125%" fill="url(#sea_gradient)" id="sea"/>
-			<circle cx="50%" cy="50%" r="50%" fill="url(#land_gradient)" clip-path="url(#land_clip)" id="land"/>
+			<circle cx="50%" cy="50%" r="50%" fill="url(#land_gradient)" clip-path="url(#land_clip_-30.0)" id="land"/>
 		</g>
 	</svg>
-	<text x="263.8975" y="199.68" font-size="153.6pt" font-family="georgia">Iris</text>
+	<text x="264" y="199.68" font-size="153.6pt" font-family="georgia">Iris</text>
 </svg>
