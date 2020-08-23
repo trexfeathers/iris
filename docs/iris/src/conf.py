@@ -97,7 +97,6 @@ rst_epilog = """
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "test",
     "sphinx.ext.todo",
     "sphinx.ext.duration",
     "sphinx.ext.coverage",

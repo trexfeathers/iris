@@ -104,6 +104,7 @@ script:
   # Capture install-dir: As a test command must be last for get Travis to check
   # the RC, so it's best to start each operation with an absolute cd.
   - export INSTALL_DIR=$(pwd)
+  - convert -version
 
   - >
     if [[ "${TEST_BLACK}" == 'true' ]]; then
