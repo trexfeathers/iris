@@ -8,10 +8,8 @@ jobs:
     runs-on: [self-hosted, Linux, x64]
 
     steps:
-    - name: Activate conda
-      run: |
-        conda activate
     - name: Checks latest commit for regression
       run: |
+        source /home/marti/miniconda3/bin/activate
         asv machine --yes
         asv continuous HEAD
