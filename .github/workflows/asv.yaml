@@ -1,0 +1,17 @@
+name: asv benchmarks
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: asv-runner-1
+
+    steps:
+    - name: Activate conda
+      run: |
+        conda activate
+    - name: Checks latest commit for regression
+      run: |
+        asv machine --yes
+        asv continuous HEAD
