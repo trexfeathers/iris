@@ -5,7 +5,7 @@ on: [push]
 jobs:
   build:
 
-    runs-on: asv-runner-1
+    runs-on: [self-hosted, Linux, x64]
 
     steps:
     - name: Activate conda
