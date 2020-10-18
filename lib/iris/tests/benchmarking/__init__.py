@@ -7,6 +7,6 @@
 from os import environ
 from pathlib import Path
 
-OVERRIDE_TEST_DATA_REPOSITORY = Path("~") / "downloads" / "iris-test-data-master" / "test_data"
+OVERRIDE_TEST_DATA_REPOSITORY = Path("iris-test-data-master") / "test_data"
 environ["OVERRIDE_TEST_DATA_REPOSITORY"] = str(OVERRIDE_TEST_DATA_REPOSITORY)
 print(environ["OVERRIDE_TEST_DATA_REPOSITORY"])
