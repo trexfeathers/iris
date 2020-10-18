@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 0
+        fetch-depth: 2
     - name: Checks latest commit for regression
       run: |
         source /home/marti/miniconda3/bin/activate
