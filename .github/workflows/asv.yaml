@@ -14,5 +14,4 @@ jobs:
     - name: Checks latest commit for regression
       run: |
         source /home/marti/miniconda3/bin/activate
-        asv machine --yes
-        echo "Hello, world!"
+        asv continuous HEAD
