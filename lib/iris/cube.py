@@ -4484,7 +4484,6 @@ calendar='gregorian')
             this function is not applicable.
 
         """
-        sleep(10)
         regridder = scheme.regridder(self, grid)
         return regridder(self)
 
