@@ -15,4 +15,4 @@ jobs:
       run: |
         source /home/marti/miniconda3/bin/activate
         asv machine --yes
-        asv continuous HEAD
+        echo "Hello, world!"
