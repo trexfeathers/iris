@@ -8,6 +8,7 @@ jobs:
     runs-on: [self-hosted, Linux, x64]
 
     steps:
+    - uses: actions/checkout@v2
     - name: Checks latest commit for regression
       run: |
         source /home/marti/miniconda3/bin/activate
