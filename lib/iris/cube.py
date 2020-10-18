@@ -21,6 +21,7 @@ import copy
 from copy import deepcopy
 from functools import reduce, partial
 import operator
+from time import sleep
 import warnings
 from xml.dom.minidom import Document
 import zlib
@@ -4483,6 +4484,7 @@ calendar='gregorian')
             this function is not applicable.
 
         """
+        sleep(10)
         regridder = scheme.regridder(self, grid)
         return regridder(self)
 
