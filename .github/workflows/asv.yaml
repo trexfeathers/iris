@@ -17,6 +17,7 @@ jobs:
           export SERVER_NAME="$(uuidgen -t)"
           mkdir benchmark-ssh
           ssh-keygen -f benchmark-ssh/id_rsa
+          export SSH_PUBLIC="$(cat benchmark-ssh/ida_rsa.pub)"
       
       - name: Start benchmark server
         uses: peter-evans/repository-dispatch@v1
@@ -24,7 +25,7 @@ jobs:
           token: ${{ secrets.CI_PRIVATE_ACCESS }}
           repository: trexfeathers/ci-private
           event-type: ci-benchmark
-          client-payload: '{"server_name": "$SERVER_NAME", "ssh_public": "benchmark-ssh/id_rsa.pub"}'
+          client-payload: '{"server_name": "$SERVER_NAME", "ssh_public": "$SSH_PUBLIC"}'
 
       - name: Install openstack
         run: |
