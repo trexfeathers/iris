@@ -9,6 +9,8 @@ jobs:
       OS_AUTH_URL: ${{ secrets.OPENSTACK_AUTH_URL }}
       OS_USERNAME: ${{ secrets.OPENSTACK_USERNAME }}
       OS_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
+      OS_USER_DOMAIN_NAME: Default
+      OS_PROJECT_DOMAIN_NAME: Default
     
     steps:
       - name: Generate constants
