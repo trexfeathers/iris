@@ -3,15 +3,49 @@ name: asv benchmarks
 on: [push]
 
 jobs:
-  build:
-
-    runs-on: [self-hosted, Linux, x64]
-
+  asv-benchmarks:
+    runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OPENSTACK_AUTH_URL }}
+      OS_USERNAME: ${{ secrets.OPENSTACK_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
+    
     steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 2
-    - name: Checks latest commit for regression
-      run: |
-        source /home/marti/miniconda3/bin/activate
-        asv continuous HEAD --show-stderr
+      - name: Generate constants
+        run: |
+          uuidgen -t >> $SERVER_NAME
+          mkdir benchmark-ssh
+          ssh-keygen -f benchmark-ssh/id_rsa
+      
+      - name: Start benchmark server
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.CI_PRIVATE_ACCESS }}
+          repository: trexfeathers/ci-private
+          event-type: ci-benchmark
+          client-payload: '{"server_name": "$SERVER_NAME", "ssh_public": "benchmark-ssh/id_rsa.pub"}'
+
+      - name: Install openstack
+        run: |
+          apt-get update
+          apt-get install python-openstackclient python-novaclient -y
+
+      - name: Wait 2mins
+        run: sleep 2m
+      
+      - name: SSH to benchmark server
+        run: |
+          openstack server list --name $SERVER_NAME -f value -c Networks | grep -oE "[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*" >> $SERVER_IP
+          SSH centos@$SERVER_IP
+      
+      - name: Test action
+        run: echo "Hello, world!"
+        
+#       - name: Checkout HEAD
+#         uses: actions/checkout@v2
+#         with:
+#           fetch-depth: 2
+#       - name: Check latest commit for regression
+#         run: |
+#           source /home/marti/miniconda3/bin/activate
+#           asv continuous HEAD --show-stderr
