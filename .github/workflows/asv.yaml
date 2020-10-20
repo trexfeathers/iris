@@ -27,8 +27,8 @@ jobs:
 
       - name: Install openstack
         run: |
-          apt-get update
-          apt-get install python-openstackclient python-novaclient -y
+          sudo apt-get update
+          sudo apt-get install python-openstackclient python-novaclient -y
 
       - name: Wait 2mins
         run: sleep 2m
