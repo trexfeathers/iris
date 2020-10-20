@@ -25,7 +25,7 @@ jobs:
           token: ${{ secrets.CI_PRIVATE_ACCESS }}
           repository: trexfeathers/ci-private
           event-type: ci-benchmark
-          client-payload: '{"server_name": $SERVER_NAME, "ssh_public": $SSH_PUBLIC}'
+          client-payload: '{\"server_name\": \"$SERVER_NAME\", \"ssh_public\": \"$SSH_PUBLIC\"}'
 
       - name: Install openstack
         run: |
