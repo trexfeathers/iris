@@ -47,7 +47,9 @@ jobs:
         with:
           fetch-depth: 2
       - name: Test action
-        run: ls
+        run: |
+          who
+          ls
 #       - name: Check latest commit for regression
 #         run: |
 #           source /home/marti/miniconda3/bin/activate
