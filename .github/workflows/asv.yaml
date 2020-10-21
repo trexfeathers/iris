@@ -14,10 +14,10 @@ jobs:
     steps:
       - name: Generate constants
         run: |
-          echo "::set-env name=SERVER_NAME::$(uuidgen -t)"
+          echo "SERVER_NAME=$(uuidgen -t)" >> $GITHUB_ENV
           mkdir benchmark-ssh
           ssh-keygen -f benchmark-ssh/id_rsa
-          echo "::set-env name=SSH_PUBLIC::$(cat benchmark-ssh/ida_rsa.pub)"
+          echo "SSH_PUBLIC=$(cat benchmark-ssh/ida_rsa.pub)" >> $GITHUB_ENV
       
       - name: Start benchmark server
         uses: peter-evans/repository-dispatch@v1
