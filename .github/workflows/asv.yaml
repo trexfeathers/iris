@@ -10,6 +10,7 @@ jobs:
       OS_USERNAME: ${{ secrets.OPENSTACK_USERNAME }}
       OS_PASSWORD: ${{ secrets.OPENSTACK_PASSWORD }}
       OS_IDENTITY_API_VERSION: 3
+      OS_REGION_NAME: UK1
     
     steps:
       - name: Generate constants
@@ -38,7 +39,7 @@ jobs:
       - name: SSH to benchmark server
         run: |
           export SERVER_IP="$(openstack server list --name ${{ env.SERVER_NAME }} -f value -c Networks | grep -oE "[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*")"
-          ssh -i benchmark-ssh/id_rsa runner@$SERVER_IP
+          ssh -o StrictHostKeyChecking=no -i benchmark-ssh/id_rsa runner@$SERVER_IP
       
       - name: Test action
         run: echo "Hello, world!"
