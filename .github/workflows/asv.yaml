@@ -21,12 +21,14 @@ jobs:
           export CLIENT_PAYLOAD='{"server_name": '$SERVER_NAME', "ssh_public": '$SSH_PUBLIC'}'
       
       - name: Start benchmark server
+        env:
+          CLIENT_PAYLOAD: $CLIENT_PAYLOAD
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.CI_PRIVATE_ACCESS }}
           repository: trexfeathers/ci-private
           event-type: ci-benchmark
-          client-payload: $CLIENT_PAYLOAD
+          client-payload: ${{ env.CLIENT_PAYLOAD }}
 
       - name: Install openstack
         run: |
