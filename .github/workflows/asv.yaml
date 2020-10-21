@@ -37,7 +37,7 @@ jobs:
       
       - name: SSH to benchmark server
         run: |
-          export SERVER_IP="$(openstack server list --name $SERVER_NAME -f value -c Networks | grep -oE "[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*" >> $SERVER_IP)"
+          export SERVER_IP="$(openstack server list --name ${{ env.SERVER_NAME }} -f value -c Networks | grep -oE "[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*" >> $SERVER_IP)"
           SSH centos@$SERVER_IP
       
       - name: Test action
