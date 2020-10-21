@@ -30,7 +30,6 @@ jobs:
 
       - name: Install openstack
         run: |
-          sudo apt-get update
           sudo apt-get install python-openstackclient python-novaclient -y
 
       - name: Wait 2mins
@@ -42,14 +41,23 @@ jobs:
           echo $SERVER_IP
           ssh centos@$SERVER_IP -o StrictHostKeyChecking=no -i benchmark-ssh/id_rsa
               
+      - name: Install Miniconda
+        run: |
+          export CONDA_BASE="https://repo.continuum.io/miniconda/Miniconda"
+          wget --quiet ${CONDA_BASE}3-latest-Linux-x86_64.sh -O miniconda.sh
+          bash miniconda.sh -b -p ${HOME}/miniconda
+          export PATH="${HOME}/miniconda/bin:${PATH}"
+      
+      - name: Install ASV
+        run: conda install -c conda-forge asv
+      
       - name: Checkout HEAD
         uses: actions/checkout@v2
         with:
           fetch-depth: 2
+      
       - name: Test action
-        run: |
-          who
-          ls
+        run: asv machine --yes
 #       - name: Check latest commit for regression
 #         run: |
 #           source /home/marti/miniconda3/bin/activate
