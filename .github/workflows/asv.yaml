@@ -14,21 +14,18 @@ jobs:
     steps:
       - name: Generate constants
         run: |
-          export SERVER_NAME="$(uuidgen -t)"
+          echo "::set-env name=SERVER_NAME::$(uuidgen -t)"
           mkdir benchmark-ssh
           ssh-keygen -f benchmark-ssh/id_rsa
-          export SSH_PUBLIC="$(cat benchmark-ssh/ida_rsa.pub)"
-          export CLIENT_PAYLOAD='{"server_name": '$SERVER_NAME', "ssh_public": '$SSH_PUBLIC'}'
+          echo "::set-env name=SSH_PUBLIC::$(cat benchmark-ssh/ida_rsa.pub)"
       
       - name: Start benchmark server
-        env:
-          CLIENT_PAYLOAD: $CLIENT_PAYLOAD
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.CI_PRIVATE_ACCESS }}
           repository: trexfeathers/ci-private
           event-type: ci-benchmark
-          client-payload: ${{ env.CLIENT_PAYLOAD }}
+          client-payload: '{"server_name": "${{ env.SERVER_NAME }}", "ssh_public": "${{ env.SSH_PUBLIC }}"}'
 
       - name: Install openstack
         run: |
