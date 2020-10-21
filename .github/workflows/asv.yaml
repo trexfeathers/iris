@@ -17,7 +17,7 @@ jobs:
           echo "SERVER_NAME=$(uuidgen -t)" >> $GITHUB_ENV
           mkdir benchmark-ssh
           ssh-keygen -f benchmark-ssh/id_rsa
-          echo "SSH_PUBLIC=$(cat benchmark-ssh/ida_rsa.pub)" >> $GITHUB_ENV
+          echo "SSH_PUBLIC=$(cat benchmark-ssh/id_rsa.pub)" >> $GITHUB_ENV
       
       - name: Start benchmark server
         uses: peter-evans/repository-dispatch@v1
