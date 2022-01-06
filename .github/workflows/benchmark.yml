@@ -3,13 +3,11 @@
 name: benchmark-check
 
 on:
-  pull_request:
-    branches:
-      - all_benchmarks
+  pull_request
 
 jobs:
   benchmark:
-    if: "github.repository == 'SciTools/iris'"
+    if: "github.repository == 'trexfeathers/iris'"
     runs-on: ubuntu-latest
 
     env:
