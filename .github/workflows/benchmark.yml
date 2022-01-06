@@ -67,18 +67,23 @@ jobs:
       - name: Set test data var
         run: |
           echo "OVERRIDE_TEST_DATA_REPOSITORY=${GITHUB_WORKSPACE}/${IRIS_TEST_DATA_PATH}/test_data" >> $GITHUB_ENV
-
-      - name: Run CI benchmarks
+          
+      - name: Conda info
         run: |
-          mkdir --parents benchmarks/.asv
-          set -o pipefail
-          nox --session="benchmarks(ci compare)" | tee benchmarks/.asv/ci_compare.txt
+          source $CONDA/bin/activate base
+          conda info
 
-      - name: Archive asv results
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: asv-report
-          path: |
-            benchmarks/.asv/results
-            benchmarks/.asv/ci_compare.txt
+#      - name: Run CI benchmarks
+#        run: |
+#          mkdir --parents benchmarks/.asv
+#          set -o pipefail
+#          nox --session="benchmarks(ci compare)" | tee benchmarks/.asv/ci_compare.txt
+
+#      - name: Archive asv results
+#        if: ${{ always() }}
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: asv-report
+#          path: |
+#            benchmarks/.asv/results
+#            benchmarks/.asv/ci_compare.txt
