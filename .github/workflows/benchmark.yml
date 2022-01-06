@@ -5,7 +5,7 @@ name: benchmark-check
 on:
   pull_request:
     branches:
-      - trexfeathers-gha-conda
+      - all_benchmarks
 
 jobs:
   benchmark:
