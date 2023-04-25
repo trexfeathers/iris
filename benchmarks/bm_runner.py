@@ -234,8 +234,9 @@ class Branch(_SubParserGenerator):
     name = "branch"
     description = (
         "Performs the same operations as ``overnight``, but always on two commits "
-        "only - ``HEAD``, and ``HEAD``'s merge-base with the input "
-        "**base_branch**. Output from this run is never saved to a file. Designed "
+        "only - ``HEAD``, and the ``HEAD`` branch's 'parent' commit on the input "
+        "**base_branch**, i.e. the commit from which the HEAD branch was "
+        "created. Output from this run is never saved to a file. Designed "
         "for testing if the active branch's changes cause performance shifts - "
         "anticipating what would be caught by ``overnight`` once merged.\n\n"
         "**For maximum accuracy, avoid using the machine that is running this "
@@ -250,26 +251,37 @@ class Branch(_SubParserGenerator):
         self.subparser.add_argument(
             "base_branch",
             type=str,
-            help="A branch that has the merge-base with ``HEAD`` - ``HEAD`` will be benchmarked against that merge-base.",
+            help="The ``HEAD`` branch's 'parent' (usually upstream/main).",
         )
 
     @staticmethod
     def func(args: argparse.Namespace) -> None:
         _setup_common()
 
-        git_command = f"git merge-base HEAD {args.base_branch}"
-        merge_base = _subprocess_run_print(
+        # Note: git merge-base is inappropriate as we sometimes update branches
+        #  using a merge commit.
+        git_command = (
+            "git log $("
+            # Best approximation of how GitHub shows just the commits on a branch.
+            f'git log --no-merges {args.base_branch}..HEAD --pretty=format:"%h"'
+            # Get the earliest commit.
+            " | tail -n 1"
+            # Get the parent of the earliest commit - the commit on base_branch
+            #  that the branch was created from.
+            ')^ --pretty=format:"%h" -n 1'
+        )
+        branch_parent = _subprocess_run_print(
             git_command.split(" "), capture_output=True, text=True
         ).stdout[:8]
 
         with NamedTemporaryFile("w") as hashfile:
-            hashfile.writelines([merge_base, "\n", "HEAD"])
+            hashfile.writelines([branch_parent, "\n", "HEAD"])
             hashfile.flush()
             commit_range = f"HASHFILE:{hashfile.name}"
             asv_command = ASV_HARNESS.format(posargs=commit_range)
             _subprocess_run_asv([*asv_command.split(" "), *args.asv_args])
 
-        _asv_compare(merge_base, "HEAD")
+        _asv_compare(branch_parent, "HEAD")
 
 
 class _CSPerf(_SubParserGenerator, ABC):
