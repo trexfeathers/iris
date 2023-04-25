@@ -12,10 +12,14 @@ on:
         description: "Argument to be passed to the overnight benchmark script."
         required: false
         type: string
+  pull_request:
+    types: [labeled]
 
 jobs:
   benchmark:
-    if: "github.repository == 'SciTools/iris'"
+    if: |
+      ${{github.repository == 'SciTools/iris' &&\
+      (!github.event.issue.pull_request or github.event.label.name == 'benchmark_this')}}
     runs-on: ubuntu-latest
 
     env:
@@ -67,7 +71,13 @@ jobs:
         run: |
           echo "OVERRIDE_TEST_DATA_REPOSITORY=${GITHUB_WORKSPACE}/${IRIS_TEST_DATA_PATH}/test_data" >> $GITHUB_ENV
 
+      - name: Benchmark this pull request
+        if: ${{ github.event.label.name == 'benchmark_this' }}
+        run: |
+          python benchmarks/bm_runner.py branch ${{ github.base_ref }}
+
       - name: Run overnight benchmarks
+        if: ${{ !github.event.issue.pull_request }}
         run: |
           first_commit=${{ inputs.first_commit }}
           if [ "$first_commit" == "" ]
@@ -81,6 +91,7 @@ jobs:
           fi
 
       - name: Create issues for performance shifts
+        if: ${{ !github.event.issue.pull_request }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
