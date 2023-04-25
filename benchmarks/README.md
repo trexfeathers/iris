@@ -108,5 +108,3 @@ minimising external factors and also allowing it to compare between a matrix
 of dependencies (each in a separate environment). We have chosen to sacrifice
 these features in favour of testing each commit with its intended dependencies,
 controlled by Nox + lock-files).
-
-Testing
