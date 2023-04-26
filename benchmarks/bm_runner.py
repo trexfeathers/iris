@@ -34,8 +34,7 @@ ASV_HARNESS = (
 
 
 def _subprocess_run_print(args, **kwargs):
-    print(f"BM_RUNNER DEBUG: {' '.join(args)}")
-    sleep(1)
+    subprocess.run(["echo", f"BM_RUNNER DEBUG: {' '.join(args)}"])
     return subprocess.run(args, **kwargs)
 
 
