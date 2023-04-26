@@ -264,6 +264,10 @@ class Branch(_SubParserGenerator):
 
         # Best approximation of how GitHub shows just the commits on a branch.
         git_command = f'git log --no-merges {args.base_branch}..HEAD --pretty=format:"%h"'
+        debugging = _subprocess_run_print(
+            git_command.split(" "), capture_output=True, text=True
+        )
+        subprocess.run(["echo", debugging.stderr])
         branch_content = _subprocess_run_print(
             git_command.split(" "), capture_output=True, text=True
         ).stdout
