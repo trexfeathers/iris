@@ -19,7 +19,8 @@ jobs:
   benchmark:
     if: >
       ${{github.repository == 'trexfeathers/iris' &&
-      (!github.event.issue.pull_request || github.event.label.name == 'benchmark_this')}}
+      (github.event_name != "pull_request" ||
+       github.event.label.name == 'benchmark_this')}}
     runs-on: ubuntu-latest
 
     env:
@@ -77,7 +78,7 @@ jobs:
           python benchmarks/bm_runner.py branch ${{ github.base_ref }}
 
       - name: Run overnight benchmarks
-        if: ${{ !github.event.issue.pull_request }}
+        if: ${{ github.event_name != 'pull_request' }}
         run: |
           first_commit=${{ inputs.first_commit }}
           if [ "$first_commit" == "" ]
@@ -91,7 +92,7 @@ jobs:
           fi
 
       - name: Create issues for performance shifts
-        if: ${{ !github.event.issue.pull_request }}
+        if: ${{ github.event_name != 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
