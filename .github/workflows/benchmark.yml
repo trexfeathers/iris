@@ -17,10 +17,7 @@ on:
 
 jobs:
   benchmark:
-    if: |
-      ${{github.repository == 'trexfeathers/iris' &&
-      (github.event_name != 'pull_request' ||
-       github.event.label.name == 'benchmark_this')}}
+    if: ${{github.repository == 'trexfeathers/iris' && (github.event_name != 'pull_request' || github.event.label.name == 'benchmark_this')}}
     runs-on: ubuntu-latest
 
     env:
