@@ -17,6 +17,7 @@ from pathlib import Path
 import re
 import subprocess
 from tempfile import NamedTemporaryFile
+from time import sleep
 from typing import Literal
 
 # The threshold beyond which shifts are 'notable'. See `asv compare`` docs
@@ -34,6 +35,7 @@ ASV_HARNESS = (
 
 def _subprocess_run_print(args, **kwargs):
     print(f"BM_RUNNER DEBUG: {' '.join(args)}")
+    sleep(1)
     return subprocess.run(args, **kwargs)
 
 
