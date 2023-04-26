@@ -36,6 +36,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          ref: ${{ github.head_ref }}
 
       - name: Install ASV & Nox
         run: |
@@ -75,7 +76,6 @@ jobs:
       - name: Benchmark this pull request
         if: ${{ github.event.label.name == 'benchmark_this' }}
         run: |
-          git checkout ${{ github.head_ref }}
           python benchmarks/bm_runner.py branch ${{ github.base_ref }}
 
       - name: Run overnight benchmarks
