@@ -260,19 +260,22 @@ class Branch(_SubParserGenerator):
 
         # Note: git merge-base is inappropriate as we sometimes update branches
         #  using a merge commit.
-        git_command = (
-            "git log $("
-            # Best approximation of how GitHub shows just the commits on a branch.
-            f'git log --no-merges {args.base_branch}..HEAD --pretty=format:"%h"'
-            # Get the earliest commit.
-            " | tail -n 1"
-            # Get the parent of the earliest commit - the commit on base_branch
-            #  that the branch was created from.
-            ')^ --pretty=format:"%h" -n 1'
-        )
+
+        # Best approximation of how GitHub shows just the commits on a branch.
+        git_command = f'git log --no-merges {args.base_branch}..HEAD --pretty=format:"%h"'
+        branch_content = _subprocess_run_print(
+            git_command.split(" "), capture_output=True, text=True
+        ).stdout
+        # Get the earliest commit.
+        # [1:-1] removes the quote marks.
+        branch_earliest = branch_content.split("\n")[-1][1:-1]
+
+        # Get the parent of the earliest commit - the commit on base_branch
+        #  that the branch was created from.
+        git_command = f'git log {branch_earliest}^ --pretty=format:"%h" -n 1'
         branch_parent = _subprocess_run_print(
             git_command.split(" "), capture_output=True, text=True
-        ).stdout[:8]
+        ).stdout[1:-1]
 
         with NamedTemporaryFile("w") as hashfile:
             hashfile.writelines([branch_parent, "\n", "HEAD"])
