@@ -1,4 +1,4 @@
-# Iris Performance Benchmarkingg
+# Iris Performance Benchmarking
 
 Iris uses an [Airspeed Velocity](https://github.com/airspeed-velocity/asv)
 (ASV) setup to benchmark performance. This is primarily designed to check for
