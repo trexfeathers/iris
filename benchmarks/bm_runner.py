@@ -136,35 +136,26 @@ def _setup_common() -> None:
 def _asv_compare(*commits: str, overnight_mode: bool = False) -> None:
     """
     Run through a list of commits comparing each one to the next.
-
-    .. todo:
-        Adapt to use :func:`_gh_create_reports`. See #5289.
     """
     commits = [commit[:8] for commit in commits]
-    shifts_dir = BENCHMARKS_DIR / ".asv" / "performance-shifts"
     for i in range(len(commits) - 1):
         before = commits[i]
         after = commits[i + 1]
         asv_command = (
             f"compare {before} {after} --factor={COMPARE_FACTOR} --split"
         )
-        _subprocess_runner(asv_command.split(" "), asv=True)
 
-        if overnight_mode:
-            # Record performance shifts.
-            # Run the command again but limited to only showing performance
-            #  shifts.
-            shifts = _subprocess_runner_capture(
-                [*asv_command.split(" "), "--only-changed"], asv=True
-            )
-            if shifts:
-                # Write the shifts report to a file.
-                # Dir is used by .github/workflows/benchmarks.yml,
-                #  but not cached - intended to be discarded after run.
-                shifts_dir.mkdir(exist_ok=True, parents=True)
-                shifts_path = (shifts_dir / after).with_suffix(".txt")
-                with shifts_path.open("w") as shifts_file:
-                    shifts_file.write(shifts)
+        comparison = _subprocess_runner_capture(
+            asv_command.split(" "), asv=True
+        )
+        echo(comparison)
+        shifts = _subprocess_runner_capture(
+            [*asv_command.split(" "), "--only-changed"], asv=True
+        )
+
+        if shifts or (not overnight_mode):
+            # For the overnight run: only post if there are shifts.
+            _gh_create_reports(after, comparison, shifts)
 
 
 def _gh_create_reports(
@@ -175,9 +166,6 @@ def _gh_create_reports(
 
     Posting the reports is done by :func:`_gh_post_reports`, which must be run
     within a separate action to comply with GHA's security limitations.
-
-    .. todo:
-        Start calling this from :func:`_asv_compare`.
     """
     if "GITHUB_ACTIONS" not in environ:
         # Only run when within GHA.
