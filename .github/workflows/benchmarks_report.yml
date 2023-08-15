@@ -3,11 +3,10 @@
 #  https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
 
 name: Report benchmark results
-id: benchmarks-report
 
 on:
   workflow_run:
-    workflows: [benchmark-run]
+    workflows: [benchmarks_run]
     types:
       - completed
 

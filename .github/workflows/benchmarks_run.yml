@@ -3,7 +3,6 @@
 #  - Introduced by this pull request.
 
 name: Run benchmarks
-id: benchmarks-run
 
 on:
   schedule:
