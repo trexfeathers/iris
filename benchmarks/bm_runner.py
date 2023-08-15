@@ -213,10 +213,10 @@ def _gh_create_reports(
         )
     )
     performance_report = performance_report.format(
-        commit_sha,
-        results_shifts,
-        results_full,
-        gha_run_link,
+        commit_sha=commit_sha,
+        results_shifts=results_shifts,
+        results_full=results_full,
+        gha_run_link=gha_run_link,
     )
 
     if on_pull_request:
