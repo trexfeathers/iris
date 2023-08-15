@@ -2,7 +2,8 @@
 #  - In the last 24 hours' commits.
 #  - Introduced by this pull request.
 
-name: Run benchmarks
+name: benchmarks-run
+run-name: Run benchmarks
 
 on:
   schedule:
