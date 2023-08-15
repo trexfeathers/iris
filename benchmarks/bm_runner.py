@@ -43,8 +43,8 @@ def echo(echo_string: str):
     subprocess.run(["echo", f"BM_RUNNER DEBUG: {echo_string}"])
 
 
-def _subprocess_runner(args, **kwargs):
-    if kwargs.pop("asv", False):
+def _subprocess_runner(args, asv=False, **kwargs):
+    if asv:
         args.insert(0, "asv")
         kwargs["cwd"] = BENCHMARKS_DIR
     echo(" ".join(args))
