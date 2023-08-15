@@ -109,5 +109,5 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
-          name: asv-report
+          name: asv-raw-results
           path: benchmarks/.asv/results
