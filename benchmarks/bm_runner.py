@@ -364,9 +364,8 @@ class Overnight(_SubParserGenerator):
     name = "overnight"
     description = (
         "Benchmarks all commits between the input **first_commit** to ``HEAD``, "
-        "comparing each to its parent for performance shifts. If a commit causes "
-        "shifts, the output is saved to a file:\n"
-        "``.asv/performance-shifts/<commit-sha>``\n\n"
+        "comparing each to its parent for performance shifts. If running on"
+        "GitHub Actions: performance shift(s) will be reported in a new issue.\n"
         "Designed for checking the previous 24 hours' commits, typically in a "
         "scheduled script."
     )
@@ -402,7 +401,10 @@ class Branch(_SubParserGenerator):
     description = (
         "Performs the same operations as ``overnight``, but always on two commits "
         "only - ``HEAD``, and ``HEAD``'s merge-base with the input "
-        "**base_branch**. Output from this run is never saved to a file. Designed "
+        "**base_branch**. If running on GitHub Actions: HEAD will be GitHub's "
+        "merge commit and merge-base will be the merge target. Performance "
+        "comparisons will be posted in a comment on the relevant pull request.\n"
+        "Designed "
         "for testing if the active branch's changes cause performance shifts - "
         "anticipating what would be caught by ``overnight`` once merged.\n\n"
         "**For maximum accuracy, avoid using the machine that is running this "
