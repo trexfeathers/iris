@@ -171,6 +171,9 @@ def _gh_create_reports(
         # Only run when within GHA.
         return
 
+    results_full = dedent(results_full)
+    results_shifts = dedent(results_shifts)
+
     pr_number = environ.get("PR_NUMBER", None)
     on_pull_request = pr_number is not None
     run_id = environ["GITHUB_RUN_ID"]
