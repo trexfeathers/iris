@@ -4,6 +4,7 @@
 # See COPYING and COPYING.LESSER in the root of the repository for full
 # licensing details.
 from importlib import import_module, reload
+from time import sleep
 
 ################
 # Prepare info for reset_colormaps:
@@ -115,6 +116,7 @@ class Iris:
         self._import("iris.analysis.trajectory")
 
     def time_aux_factory(self):
+        sleep(5)
         self._import("iris.aux_factory")
 
     def time_common(self):
