@@ -424,11 +424,14 @@ class Branch(_SubParserGenerator):
     def func(args: argparse.Namespace) -> None:
         _setup_common()
 
-        git_command = f"git merge-base HEAD {args.base_branch}"
+        git_command = "git rev-parse HEAD"
+        head_sha = _subprocess_runner_capture(git_command.split(" "))[:8]
+
+        git_command = f"git merge-base {head_sha} {args.base_branch}"
         merge_base = _subprocess_runner_capture(git_command.split(" "))[:8]
 
         with NamedTemporaryFile("w") as hashfile:
-            hashfile.writelines([merge_base, "\n", "HEAD"])
+            hashfile.writelines([merge_base, "\n", head_sha])
             hashfile.flush()
             commit_range = f"HASHFILE:{hashfile.name}"
             asv_command = ASV_HARNESS.format(posargs=commit_range)
@@ -436,7 +439,7 @@ class Branch(_SubParserGenerator):
                 [*asv_command.split(" "), *args.asv_args], asv=True
             )
 
-        _asv_compare(merge_base, "HEAD")
+        _asv_compare(merge_base, head_sha)
 
 
 class _CSPerf(_SubParserGenerator, ABC):
