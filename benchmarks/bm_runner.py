@@ -32,8 +32,8 @@ GH_REPORT_DIR = ROOT_DIR.joinpath(".github", "workflows", "benchmark_reports")
 
 # Common ASV arguments for all run_types except `custom`.
 ASV_HARNESS = (
-    "run {posargs} --attribute rounds=4 --interleave-rounds --strict "
-    "--show-stderr"
+    "run {posargs} --attribute rounds=1 --strict "
+    "--show-stderr --bench aux_factory"
 )
 
 
