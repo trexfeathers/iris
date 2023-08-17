@@ -248,7 +248,7 @@ def _gh_create_reports(
                 gh_query = f'.["{login_type}"]["login"]'
                 command = shlex.split(
                     f"gh pr view {pr_tag[1:]} "
-                    f"--json {login_type} -q {gh_query} "
+                    f"--json {login_type} -q '{gh_query}' "
                     f"--repo {repo}"
                 )
                 login = _subprocess_runner_capture(command)
