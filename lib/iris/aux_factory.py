@@ -22,8 +22,6 @@ from iris.common import (
 )
 import iris.coords
 
-raise Exception
-
 
 class AuxCoordFactory(CFVariableMixin, metaclass=ABCMeta):
     """
