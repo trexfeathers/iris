@@ -9,7 +9,6 @@ Definitions of derived coordinates.
 """
 
 from abc import ABCMeta, abstractmethod
-from time import sleep
 import warnings
 
 import cf_units
@@ -22,8 +21,6 @@ from iris.common import (
     metadata_manager_factory,
 )
 import iris.coords
-
-sleep(3)
 
 
 class AuxCoordFactory(CFVariableMixin, metaclass=ABCMeta):
