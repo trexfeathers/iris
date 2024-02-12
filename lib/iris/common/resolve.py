@@ -21,6 +21,7 @@ from dask.array.core import broadcast_shapes
 import numpy as np
 
 from ..config import get_logger
+from ..exceptions import ResolveError
 from . import LENIENT
 
 __all__ = ["Resolve"]
@@ -57,6 +58,8 @@ _DimCoverage = namedtuple(
 _Item = namedtuple("Item", ["metadata", "coord", "dims"])
 
 _PreparedFactory = namedtuple("PreparedFactory", ["container", "dependencies"])
+
+MERGE_MODE = False
 
 
 @dataclass
@@ -434,7 +437,7 @@ class Resolve:
                 f"will not broadcast with the {self._tgt_cube_position} cube "
                 f"{tgt_cube.name()!r}."
             )
-            raise ValueError(emsg)
+            raise ResolveError(emsg)
 
         new_src_data = src_cube.core_data().copy()
 
@@ -621,7 +624,7 @@ class Resolve:
                     "source cube {!r} to target cube {!r}, using {!r} on "
                     "target cube dimension{} {}."
                 )
-                raise ValueError(
+                raise ResolveError(
                     emsg.format(
                         src_coverage.cube.name(),
                         tgt_coverage.cube.name(),
@@ -902,7 +905,7 @@ class Resolve:
                     "source cube {!r} to target cube {!r}, using {!r} on "
                     "target cube dimension {}."
                 )
-                raise ValueError(
+                raise ResolveError(
                     emsg.format(
                         src_coverage.cube.name(),
                         tgt_coverage.cube.name(),
@@ -1088,7 +1091,7 @@ class Resolve:
                 f"of the {self._src_cube_position} cube {src_cube.name()!r} "
                 f"to the {self._tgt_cube_position} cube {tgt_cube.name()!r}."
             )
-            raise ValueError(emsg)
+            raise ResolveError(emsg)
 
         # Update the mapping.
         self.mapping.update(free_mapping)
@@ -1518,7 +1521,7 @@ class Resolve:
                             f"LHS cube {self.lhs_cube.name()!r} and "
                             f"RHS cube {self.rhs_cube.name()!r}."
                         )
-                        raise ValueError(emsg)
+                        raise ResolveError(emsg)
 
                 if prepared_item is None:
                     # Make a "normal" _PreparedItem, which is specified using
@@ -1528,6 +1531,13 @@ class Resolve:
                         src_coord = AuxCoord.from_coord(src_coord)
                     if tgt_is_mesh:
                         tgt_coord = AuxCoord.from_coord(tgt_coord)
+                    # if src_item.dims == tgt_item.dims == () and MERGE_MODE:
+                    #     # TODO: need to somehow keep the scalar coordinates if
+                    #     #  their points mismatch, but error if there is something
+                    #     #  else wrong (e.g. units). Currently other mismatches just mean
+                    #     #  discard if strict, keep both if lenient.
+                    #     points, bounds = (None, None)
+                    # else:
                     points, bounds = self._prepare_points_and_bounds(
                         src_coord,
                         tgt_coord,
@@ -2108,7 +2118,7 @@ class Resolve:
                     f"{self._tgt_cube_position} cube {self._tgt_cube.name()!r} to "
                     f"broadcast shape {tgt_shape_broadcast}."
                 )
-                raise ValueError(emsg)
+                raise ResolveError(emsg)
             elif src_broadcasting:
                 # Use the tgt coordinate points/bounds.
                 points = tgt_coord.points
@@ -2121,6 +2131,7 @@ class Resolve:
         if points is None and bounds is None:
             # Note that, this also ensures shape equality.
             eq_points = array_equal(src_coord.points, tgt_coord.points, withnans=True)
+            eq_points = eq_points or (src_dims == tgt_dims == () and MERGE_MODE)
             if eq_points:
                 points = src_coord.points
                 src_has_bounds = src_coord.has_bounds()
@@ -2129,6 +2140,7 @@ class Resolve:
                 if src_has_bounds and tgt_has_bounds:
                     src_bounds = src_coord.bounds
                     eq_bounds = array_equal(src_bounds, tgt_coord.bounds, withnans=True)
+                    eq_bounds = eq_bounds or (src_dims == tgt_dims == () and MERGE_MODE)
 
                     if eq_bounds:
                         bounds = src_bounds
@@ -2148,7 +2160,7 @@ class Resolve:
                                 f"LHS cube {self.lhs_cube.name()!r} and "
                                 f"RHS cube {self.rhs_cube.name()!r}."
                             )
-                            raise ValueError(emsg)
+                            raise ResolveError(emsg)
                 else:
                     # For lenient, use either of the coordinate bounds, if they exist.
                     if LENIENT["maths"]:
@@ -2175,14 +2187,14 @@ class Resolve:
                                 f"{self._src_cube_position} cube {self._src_cube.name()!r}, "
                                 f"but not the {self._tgt_cube_position} cube {self._tgt_cube.name()!r}."
                             )
-                            raise ValueError(emsg)
+                            raise ResolveError(emsg)
                         if tgt_has_bounds:
                             emsg = (
                                 f"Coordinate {tgt_coord.name()!r} has bounds for the "
                                 f"{self._tgt_cube_position} cube {self._tgt_cube.name()!r}, "
                                 f"but not the {self._src_cube_position} cube {self._src_cube.name()!r}."
                             )
-                            raise ValueError(emsg)
+                            raise ResolveError(emsg)
             else:
                 if LENIENT["maths"] and ignore_mismatch:
                     # For lenient, ignore coordinate with mis-matched points.
@@ -2198,7 +2210,7 @@ class Resolve:
                         f"LHS cube {self.lhs_cube.name()!r} and "
                         f"RHS cube {self.rhs_cube.name()!r}."
                     )
-                    raise ValueError(emsg)
+                    raise ResolveError(emsg)
 
         return points, bounds
 
@@ -2394,7 +2406,7 @@ class Resolve:
                 "Cannot resolve resultant cube, as the provided data must "
                 f"have shape {expected_shape}, got data shape {data.shape}."
             )
-            raise ValueError(emsg)
+            raise ResolveError(emsg)
 
         if in_place:
             result = self._tgt_cube

@@ -20,7 +20,7 @@ from iris._lazy_data import (
     is_lazy_data,
     multidim_lazy_stack,
 )
-from iris.common import CoordMetadata, CubeMetadata
+from iris.common import CoordMetadata, CubeMetadata, resolve
 from iris.common._split_attribute_dicts import (
     _convert_splitattrs_to_pairedkeys_dict as convert_splitattrs_to_pairedkeys_dict,
 )
@@ -1116,23 +1116,18 @@ class ProtoCube:
         ]
 
         # The proto-cube source.
-        self._source = cube
+        self._source: iris.cube.Cube
 
         # The cube signature is metadata that defines this ProtoCube.
-        self._cube_signature = self._build_signature(cube)
-
-        # Extract the scalar and vector coordinate data and metadata
-        # from the cube.
-        coord_payload = self._extract_coord_payload(cube)
+        self._cube_signature: _CubeSignature
 
         # The coordinate signature defines the scalar and vector
         # coordinates of this ProtoCube.
-        self._coord_signature = coord_payload.as_signature()
-        self._coord_metadata = coord_payload.scalar.metadata
+        self._coord_signature: _CoordSignature
+        self._coord_metadata: list[_CoordMetaData]
 
         # The list of stripped-down source-cubes relevant to this ProtoCube.
         self._skeletons = []
-        self._add_cube(cube, coord_payload)
 
         # Proto-coordinates constructed from merged scalars.
         self._dim_templates = []
@@ -1160,6 +1155,25 @@ class ProtoCube:
 
         # cell measures and ancillary variables are not merge candidates
         # they are checked and preserved through merge
+        self._cell_measures_and_dims: list[tuple[iris.coords.CellMeasure, int]]
+        self._ancillary_variables_and_dims: list[
+            tuple[iris.coords.AncillaryVariable, int]
+        ]
+
+        self._set_source_cube(cube)
+
+    def _set_source_cube(self, cube):
+        self._source = cube
+
+        self._cube_signature = self._build_signature(cube)
+
+        coord_payload = self._extract_coord_payload(cube)
+
+        self._coord_signature = coord_payload.as_signature()
+        self._coord_metadata = coord_payload.scalar.metadata
+
+        self._add_cube(cube, coord_payload, source_overwrite=True)
+
         self._cell_measures_and_dims = cube._cell_measures_and_dims
         self._ancillary_variables_and_dims = cube._ancillary_variables_and_dims
 
@@ -1305,17 +1319,89 @@ class ProtoCube:
             this :class:`ProtoCube`.
 
         """
-        cube_signature = self._cube_signature
-        other = self._build_signature(cube)
-        match = cube_signature.match(other, error_on_mismatch)
+        resolve.MERGE_MODE = True
+
+        original_coord_attr = "_iris_original_coord"
+
+        def find_scalar_coords(cube_):
+            return [coord for coord in cube_.aux_coords if coord.cube_dims(cube_) == ()]
+            # removed = []
+            # for coord in cube_.aux_coords:
+            #     if coord.cube_dims(cube_) == ():
+            #         blank_coord = coord.copy(
+            #             points=[np.nan],
+            #             bounds=None
+            #         )
+            #         cube_.replace_coord(blank_coord)
+            #         # blank_coord.attributes[original_coord_attr] = coord
+            #         removed.append(coord)
+            # return removed
+
+        def restore_scalar_coords(cube_):
+            for coord in cube_.aux_coords:
+                original_coord = coord.attributes.get(original_coord_attr)
+                if original_coord is not None:
+                    cube_.remove_coord(coord)
+                    cube_.add_aux_coord(original_coord)
+
+        scalars_lhs = find_scalar_coords(self._source)
+        scalars_rhs = find_scalar_coords(cube)
+
+        try:
+            resolver = resolve.Resolve(self._source, cube)
+        except iris.exceptions.ResolveError as err:
+            match = False
+            if error_on_mismatch:
+                raise err
+                # TODO: sort out MergeError
+                # raise iris.exceptions.MergeError from err
+        else:
+            match = True
+        # cube_signature = self._cube_signature
+        # other = self._build_signature(cube)
+        # match = cube_signature.match(other, error_on_mismatch)
+        # if match:
+        #     coord_payload = self._extract_coord_payload(cube)
+        # match = coord_payload.match_signature(
+        #     self._coord_signature, error_on_mismatch
+        # )
         if match:
-            coord_payload = self._extract_coord_payload(cube)
-            match = coord_payload.match_signature(
-                self._coord_signature, error_on_mismatch
-            )
+            try:
+                new_lhs = resolver.cube(self._source.core_data())
+                new_rhs = resolver.cube(cube.core_data())
+            except iris.exceptions.ResolveError as err:
+                match = False
+                if error_on_mismatch:
+                    raise err
+                    # TODO: sort out MergeError
+                    # raise iris.exceptions.MergeError from err
+
+            # restore_scalar_coords(new_lhs)
+            # restore_scalar_coords(new_rhs)
+
         if match:
+            for scalar in scalars_lhs:
+                try:
+                    new_lhs.replace_coord(scalar)
+                except iris.exceptions.CoordinateNotFoundError:
+                    raise Exception("scalar removed - indicates incompatibility")
+                # TODO: this should error without needing the below check?
+                # if scalar not in new_lhs.aux_coords:
+                #     raise Exception
+            for scalar in scalars_rhs:
+                try:
+                    new_rhs.replace_coord(scalar)
+                except iris.exceptions.CoordinateNotFoundError:
+                    raise Exception("scalar removed - indicates incompatibility")
+                # TODO: this should error without needing the below check?
+                # if scalar not in new_rhs.aux_coords:
+                #     raise Exception
+
+            self._set_source_cube(new_lhs)
+
+            coord_payload_rhs = self._extract_coord_payload(new_rhs)
             # Register the cube as a source-cube for this ProtoCube.
-            self._add_cube(cube, coord_payload)
+            self._add_cube(new_rhs, coord_payload_rhs)
         return match
 
     def _guess_axis(self, name):
@@ -1675,14 +1761,20 @@ class ProtoCube:
             cube._ancillary_variables_and_dims,
         )
 
-    def _add_cube(self, cube, coord_payload):
+    def _add_cube(self, cube, coord_payload, source_overwrite=False):
         """Create and add the source-cube skeleton to the ProtoCube."""
         skeleton = _Skeleton(coord_payload.scalar.values, cube.core_data())
-        # Attempt to do something sensible with mixed scalar dtypes.
-        for i, metadata in enumerate(coord_payload.scalar.metadata):
-            if metadata.points_dtype > self._coord_metadata[i].points_dtype:
-                self._coord_metadata[i] = metadata
-        self._skeletons.append(skeleton)
+        if source_overwrite:
+            if len(self._skeletons) == 0:
+                self._skeletons.append(skeleton)
+            else:
+                self._skeletons[0] = skeleton
+        else:
+            # Attempt to do something sensible with mixed scalar dtypes.
+            for i, metadata in enumerate(coord_payload.scalar.metadata):
+                if metadata.points_dtype > self._coord_metadata[i].points_dtype:
+                    self._coord_metadata[i] = metadata
+            self._skeletons.append(skeleton)
 
     def _extract_coord_payload(self, cube):
         """Extract all relevant coordinate data and metadata from the cube.

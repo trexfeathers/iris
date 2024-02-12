@@ -163,6 +163,12 @@ class CannotAddError(ValueError):
     pass
 
 
+class ResolveError(ValueError):
+    """Raised when two Cubes cannot be resolved (:mod:`iris.common.resolve`)."""
+
+    pass
+
+
 ###############################################################################
 # WARNINGS
 # Please namespace all warning objects (i.e. prefix with Iris...).
