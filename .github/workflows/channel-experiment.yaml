@@ -1,0 +1,11 @@
+name: Test conda channels
+
+on:
+  workflow_dispatch
+
+jobs:
+  job:
+    runs-on: ubuntu
+  
+    steps:
+      - run: conda config --show channels
