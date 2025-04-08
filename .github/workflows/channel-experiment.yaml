@@ -5,7 +5,7 @@ on:
 
 jobs:
   job:
-    runs-on: ubuntu
+    runs-on: ubuntu-latest
   
     steps:
       - run: conda config --show channels
