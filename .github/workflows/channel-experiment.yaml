@@ -20,7 +20,7 @@ jobs:
           channels=$(conda config --show channels --json | jq -r '.channels[]')
           for channel in $channels; do
             if [ "$channel" != "conda-forge" ]; then
-                echo $channel
+                echo "Attempting to remove channel: '$channel'"
                 conda config --remove channels $channel
             fi
           done
