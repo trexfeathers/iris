@@ -16,13 +16,14 @@ jobs:
       #  (Fixed in future Conda versions: https://github.com/conda/conda/pull/14227).
       - run: conda config --add channels conda-forge
 
+      - run: conda config --remove channels https://repo.anaconda.com/pkgs/main
+
       - run: |
           channels=$(conda config --show channels --json | jq -r '.channels[]')
           for channel in $channels; do
             if [ "$channel" != "conda-forge" ]; then
                 echo $channel
                 conda config --remove channels $channel
-                cat /usr/share/miniconda/.condarc
             fi
           done
 
