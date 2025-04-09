@@ -22,6 +22,7 @@ jobs:
             if [ "$channel" != "conda-forge" ]; then
                 echo $channel
                 conda config --remove channels $channel
+                cat /usr/share/miniconda/.condarc
             fi
           done
 
