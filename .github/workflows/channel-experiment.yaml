@@ -17,11 +17,11 @@ jobs:
       - run: conda config --add channels conda-forge
 
       - run: |
-          channels=$(conda config --show channels --json | jq -r '.channels[]')
+          channels=$(conda config --show channels --json | jq -r '.channels[]' | xargs)
           for channel in $channels; do
             if [ "$channel" != "conda-forge" ]; then
                 echo $channel
-                conda config --remove channels "$channel"
+                conda config --remove channels $channel
             fi
           done
 
