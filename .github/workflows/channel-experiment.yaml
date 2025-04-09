@@ -16,6 +16,10 @@ jobs:
       #  (Fixed in future Conda versions: https://github.com/conda/conda/pull/14227).
       - run: conda config --add channels conda-forge
 
+      - run: conda config --remove channels https://repo.anaconda.com/pkgs/main
+
+      - run: conda config --show channels
+
       - run: |
           channels=$(conda config --show channels --json | jq -r '.channels[]')
           for channel in $channels; do
