@@ -18,6 +18,10 @@ jobs:
 
       - run: conda config --remove channels https://repo.anaconda.com/pkgs/main
 
+      - run: cat /usr/share/miniconda/.condarc
+
+      - run: conda config --show-sources
+
       - run: conda config --show channels
 
       - run: |
