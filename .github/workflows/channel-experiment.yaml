@@ -9,3 +9,9 @@ jobs:
   
     steps:
       - run: conda config --show channels
+
+      - run: conda config --remove-key channels
+
+      - run: conda config --add channels conda-forge
+
+      - run: conda config --show channels
