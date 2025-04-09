@@ -14,9 +14,9 @@ jobs:
 
       # Add conda-forge first, to avoid unpredictable behaviour from channel being empty.
       #  (Fixed in future Conda versions: https://github.com/conda/conda/pull/14227).
-      - run: conda config --add channels conda-forge
+      - run: conda config --add channels conda-forge --system
 
-      - run: conda config --remove channels https://repo.anaconda.com/pkgs/main
+      - run: conda config --remove channels https://repo.anaconda.com/pkgs/main --system
 
       - run: cat /usr/share/miniconda/.condarc
 
@@ -29,7 +29,7 @@ jobs:
           for channel in $channels; do
             if [ "$channel" != "conda-forge" ]; then
                 echo "Attempting to remove channel: '$channel'"
-                conda config --remove channels $channel
+                conda config --remove channels $channel --system
             fi
           done
           conda config --show channels
