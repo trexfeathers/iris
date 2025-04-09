@@ -10,8 +10,16 @@ jobs:
     steps:
       - run: conda config --show channels
 
-      - run: conda config --remove-key channels
-
+      # Add conda-forge first, to avoid unpredictable behaviour from channel being empty.
+      #  (Fixed in future Conda versions: https://github.com/conda/conda/pull/14227).
       - run: conda config --add channels conda-forge
+
+      - run: |
+          channels=$(conda config --show channels --json | jq -r '.channels[]')
+          for channel in $channels; do
+            if [ "$channel" != "conda-forge" ]; then
+                conda config --remove channels $channel
+            fi
+          done
 
       - run: conda config --show channels
