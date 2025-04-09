@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
   
     steps:
+      - run: conda config --show-sources
+      
       - run: conda config --show channels
 
       # Add conda-forge first, to avoid unpredictable behaviour from channel being empty.
