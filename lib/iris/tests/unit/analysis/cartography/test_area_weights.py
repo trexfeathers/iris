@@ -27,3 +27,15 @@ class TestInvalidUnits:
         cube.coord("longitude").units = None
         with pytest.raises(ValueError, match="Units of degrees or radians required"):
             iris.analysis.cartography.area_weights(cube)
+
+
+def test_multi_coord():
+    # Confirm the correct handling of multiple latitude and longitude coordinates.
+    #  I.e. it doesn't crash - it has a mechanism for choosing the one that won't crash
+    #   (only the DimCoord is 1D).
+    cube = stock.realistic_4d_w_everything()
+    assert cube.coord("grid_latitude", dim_coords=True)
+    assert cube.coord("grid_longitude", dim_coords=True)
+    assert cube.coord("latitude", dim_coords=False)
+    assert cube.coord("longitude", dim_coords=False)
+    _ = iris.analysis.cartography.area_weights(cube)

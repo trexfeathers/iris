@@ -132,6 +132,11 @@ This document explains the changes made to Iris for this release
 
 #. `@SgtVarmint`_ migrated codebase from ``os.path`` to ``pathlib.Path`` where possible
    (:issue:`4523`, :pull:`7087`)
+
+#. `@trexfeathers`_ and `@stephenworsley`_ added a new test to check that
+   :func:`iris.analysis.cartography.area_weights` correctly handles cases where
+   both a 1-dimensional AND 2-dimensional latitude or longitude coordinate is present.
+   (:pull:`7118`)
    
 .. comment
     Whatsnew author names (@github name) in alphabetical order. Note that,
