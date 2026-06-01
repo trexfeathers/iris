@@ -56,6 +56,12 @@ This document explains the changes made to Iris for this release
    always promoting the result to ``float64``. Integer inputs are still returned
    as ``float64``. (:issue:`4119`)
 
+#. :user:`gaoflow` fixed an error when computing (e.g. saving) a scalar lazy
+   cube whose units had been converted with
+   :meth:`~iris.cube.Cube.convert_units`. The unit conversion could yield a
+   plain Python scalar for the 0-dimensional block, which Dask was then unable
+   to store. (:issue:`6965`)
+
 
 💣 Incompatible Changes
 =======================
