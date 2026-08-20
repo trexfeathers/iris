@@ -12,6 +12,11 @@ from pathlib import Path
 import re
 
 from asv import util as asv_util
+from lockfile_url_utils import (
+    lockfile_uses_anaconda_org,
+    network_blocks_anaconda_org,
+    rewrite_lockfile_with_internal_mirror,
+)
 
 from _asv_delegated_abc import _DelegatedABC
 
@@ -20,6 +25,21 @@ class Delegated(_DelegatedABC):
     """Specialism of :class:`_DelegatedABC` for benchmarking this repo."""
 
     tool_name = "delegated"
+
+    def _convert_lockfiles_for_blocked_network(self, lockfile_dir: Path) -> None:
+        """Convert lockfiles to internal mirror URLs when network blocks anaconda.org.
+
+        This compatibility step supports historical Iris commits whose noxfiles do
+        not yet contain the native ssstack conversion support.
+
+        """
+        if not network_blocks_anaconda_org():
+            return
+
+        for lockfile in lockfile_dir.glob("*.lock"):
+            if not lockfile_uses_anaconda_org(lockfile):
+                continue
+            rewrite_lockfile_with_internal_mirror(lockfile)
 
     def _prep_env_override(self, env_parent_dir: Path) -> Path:
         """Environment preparation specialised for this repo.
@@ -68,12 +88,17 @@ class Delegated(_DelegatedABC):
         mode = None
 
         noxfile = build_dir / "noxfile.py"
+        noxfile_has_native_ssstack_support = False
         if noxfile.is_file():
             # Our noxfile originally did not support `--install-only` - you
             #  could either run the tests, or run nothing at all. Adding
             #  `run_always` to `prepare_venv` enabled environment setup without
             #  running tests.
-            noxfile_tree = ast.parse(source=noxfile.read_text())
+            noxfile_code = noxfile.read_text()
+            noxfile_tree = ast.parse(source=noxfile_code)
+            noxfile_has_native_ssstack_support = (
+                "conda_install_from_lockfile" in noxfile_code
+            )
             prep_session = next(
                 filter(
                     lambda node: getattr(node, "name", "") == "prepare_venv",
@@ -99,6 +124,10 @@ class Delegated(_DelegatedABC):
                 if not lockfile_dir.is_dir():
                     message = "No lockfile directory found in the expected locations."
                     raise FileNotFoundError(message)
+
+                # Historical commits do not include noxfile-level ssstack support.
+                if not noxfile_has_native_ssstack_support:
+                    self._convert_lockfiles_for_blocked_network(lockfile_dir)
 
                 def py_ver_from_lockfiles(lockfile: Path) -> str:
                     pattern = re.compile(r"py(\d+)-")

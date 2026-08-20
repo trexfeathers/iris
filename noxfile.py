@@ -12,9 +12,16 @@ For further details, see https://nox.thea.codes/en/stable/#
 import hashlib
 import os
 from pathlib import Path
+import sys
 
 import nox
 from nox.logger import logger
+
+REPO_ROOT = Path(__file__).resolve().parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from tools.lockfile_url_utils import resolved_lockfile_for_conda_install
 
 nox.options.default_venv_backend = "conda"
 nox.needs_version = ">=2022.1.7"
@@ -118,6 +125,25 @@ def cache_cartopy(session: nox.sessions.Session) -> None:
         )
 
 
+def conda_install_from_lockfile(session: nox.sessions.Session, lockfile: Path) -> None:
+    """Install conda packages from a lockfile.
+
+    Uses shared lockfile URL utilities to handle restricted-network installs,
+    including automatic ``ssstack`` (UK Met Office tool) conversion when
+    available.
+
+    Parameters
+    ----------
+    session : object
+        A `nox.sessions.Session` object.
+    lockfile : Path
+        Path to the conda lock file to install from.
+
+    """
+    with resolved_lockfile_for_conda_install(lockfile) as install_lockfile:
+        session.conda_install("--file", str(install_lockfile))
+
+
 def prepare_venv(session: nox.sessions.Session) -> None:
     """Create and cache the nox session conda environment.
 
@@ -144,7 +170,7 @@ def prepare_venv(session: nox.sessions.Session) -> None:
         # environment has been created but packages not yet installed
         # populate the environment from the lockfile
         logger.debug(f"Populating conda env at {venv_dir}")
-        session.conda_install("--file", str(lockfile))
+        conda_install_from_lockfile(session, lockfile)
         cache_venv(session)
 
     elif venv_changed(session):
@@ -153,7 +179,7 @@ def prepare_venv(session: nox.sessions.Session) -> None:
         _re_orig = session.virtualenv.reuse_existing
         session.virtualenv.reuse_existing = False
         session.virtualenv.create()
-        session.conda_install("--file", str(lockfile))
+        conda_install_from_lockfile(session, lockfile)
         session.virtualenv.reuse_existing = _re_orig
         cache_venv(session)
 
