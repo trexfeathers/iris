@@ -62,6 +62,9 @@ class _DelegatedABC(Environment, ABC):
     COMMIT_ENVS_VAR = "ASV_COMMIT_ENVS"
     """Env var that instructs a dedicated environment be created per commit."""
 
+    ENV_PARENT_VAR = "ASV_ENV_PARENT"
+    """Env var to override the parent directory used for benchmark environments."""
+
     def __init__(self, conf, python, requirements, tagged_env_vars):
         """Get a 'delegated' environment based on the given ASV config object.
 
@@ -189,7 +192,10 @@ class _DelegatedABC(Environment, ABC):
         )
         log.info(message)
 
-        env_parent = Path(self._env_dir).resolve()
+        if self.ENV_PARENT_VAR in environ:
+            env_parent = Path(environ[self.ENV_PARENT_VAR]).resolve()
+        else:
+            env_parent = Path(self._env_dir).resolve()
         new_env_per_commit = self.COMMIT_ENVS_VAR in environ
         if new_env_per_commit:
             env_parent = env_parent / commit_hash[:8]

@@ -43,9 +43,8 @@ can be reduced by co-locating the benchmark environment and your
 on the same [file system](https://en.wikipedia.org/wiki/File_system), if they 
 are not already. This can be done in several ways:
 
-- Temporarily reconfiguring `env_parent` in
-  [`_asv_delegated_abc`](_asv_delegated_abc.py) to reference a location on the same 
-  file system as the Conda package cache.
+- Setting `$ASV_ENV_PARENT` to a path on the same file system as the Conda
+  package cache.
 - Using an alternative Conda package cache location during the benchmark run,
   e.g. via the `$CONDA_PKGS_DIRS` environment variable.
 - Moving your repo checkout to the same file system as the Conda package cache.
@@ -59,6 +58,7 @@ are not already. This can be done in several ways:
 | `BENCHMARK_DATA` | optional | Path to a directory for benchmark synthetic test data, which the benchmark scripts will create if it doesn't already exist. Defaults to `<root>/benchmarks/.data/` if not set. | Some of the generated files, especially in the 'SPerf' suite, are many GB in size so plan accordingly. |
 | `ON_DEMAND_BENCHMARKS` | optional | When set (to any value): benchmarks decorated with `@on_demand_benchmark` are included in the ASV run. Usually coupled with the ASV `--bench` argument to only run the benchmark(s) of interest. Is set during the benchmark runner `cperf` and `sperf` sub-commands. |  |
 | `ASV_COMMIT_ENVS` | optional | Instruct the [delegated environment management](#benchmark-environments) to create a dedicated environment for each commit being benchmarked when set (to any value). This means that benchmarking commits with different environment requirements will not be delayed by repeated environment setup - especially relevant given the [benchmark runner](bm_runner.py)'s use of [--interleave-rounds](https://asv.readthedocs.io/en/stable/commands.html?highlight=interleave-rounds#asv-run), or any time you know you will repeatedly benchmark the same commit. | **SciTools environments tend to be large so this option can consume a lot of disk space.** |
+| `ASV_ENV_PARENT` | optional | Override the parent directory used for benchmark environments. Useful for co-locating environments with the Conda package cache to reduce install time (see [Reducing run time](#reducing-run-time)). Defaults to ASV's own `env_dir` if not set. |  |
 
 ## Writing benchmarks
 
