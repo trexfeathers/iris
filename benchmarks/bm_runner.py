@@ -129,6 +129,12 @@ def _setup_common() -> None:
 
     echo("Setting up ASV ...")
     _subprocess_runner(["machine", "--yes"], asv=True)
+    asv_machine_num_cpu = environ.get("ASV_MACHINE_NUM_CPU")
+    asv_machine_ram = environ.get("ASV_MACHINE_RAM")
+    if asv_machine_num_cpu:
+        _subprocess_runner(["machine", "--num_cpu", asv_machine_num_cpu], asv=True)
+    if asv_machine_ram:
+        _subprocess_runner(["machine", "--ram", asv_machine_ram], asv=True)
 
     echo("Setup complete.")
 
@@ -352,6 +358,7 @@ class _SubParserGenerator(ABC):
     name: str = NotImplemented
     description: str = NotImplemented
     epilog: str = NotImplemented
+    allow_asv_passthrough: bool = True
 
     class _SubParsersType(Protocol):
         """Duck typing since argparse._SubParsersAction is private."""
@@ -366,20 +373,15 @@ class _SubParserGenerator(ABC):
             formatter_class=argparse.RawTextHelpFormatter,
         )
         self.add_arguments()
-        self.add_asv_arguments()
-        self.subparser.set_defaults(func=self.func)
+        self.subparser.set_defaults(
+            func=self.func,
+            allow_asv_passthrough=self.allow_asv_passthrough,
+        )
 
     @abstractmethod
     def add_arguments(self) -> None:
         """All custom self.subparser.add_argument() calls."""
         _ = NotImplemented
-
-    def add_asv_arguments(self) -> None:
-        self.subparser.add_argument(
-            "asv_args",
-            nargs=argparse.REMAINDER,
-            help="Any number of arguments to pass down to the ASV benchmark command.",
-        )
 
     @staticmethod
     @abstractmethod
@@ -438,9 +440,9 @@ class Branch(_SubParserGenerator):
     name = "branch"
     description = (
         "Performs the same operations as ``overnight``, but always on two "
-        "commits only - ``HEAD``, and ``HEAD``'s merge-base with the input "
-        "**base_branch**.\n"
-        "If running on GitHub Actions: HEAD will be GitHub's "
+        "commits only - **branch-ref** (default: ``HEAD``), and "
+        "**branch-ref**'s merge-base with the input **base-branch**.\n"
+        "If running on GitHub Actions: branch-ref will be GitHub's "
         "merge commit and merge-base will be the merge target. Performance "
         "comparisons will be posted in a comment on the relevant pull request.\n"
         "Designed for testing if the active branch's changes cause performance "
@@ -452,6 +454,7 @@ class Branch(_SubParserGenerator):
     )
     epilog = (
         "e.g. python bm_runner.py branch upstream/main\n"
+        "e.g. python bm_runner.py branch upstream/main --branch-ref HEAD~1\n"
         "e.g. python bm_runner.py branch upstream/main --bench=regridding"
     )
 
@@ -459,27 +462,42 @@ class Branch(_SubParserGenerator):
         self.subparser.add_argument(
             "base_branch",
             type=str,
-            help="A branch that has the merge-base with ``HEAD`` - ``HEAD`` will be benchmarked against that merge-base.",
+            help=(
+                "A branch that has the merge-base with the selected "
+                "``branch-ref``."
+            ),
+        )
+        self.subparser.add_argument(
+            "--branch-ref",
+            dest="branch_ref",
+            type=str,
+            default="HEAD",
+            help=(
+                "Git revision to benchmark against the merge-base with "
+                "``base-branch``. Defaults to ``HEAD``."
+            ),
         )
 
     @staticmethod
     def func(args: argparse.Namespace) -> None:
         _setup_common()
 
-        git_command = shlex.split("git rev-parse HEAD")
-        head_sha = _subprocess_runner_capture(git_command)[:8]
+        git_command = shlex.split(f"git rev-parse {args.branch_ref}")
+        branch_ref_sha = _subprocess_runner_capture(git_command)[:8]
 
-        git_command = shlex.split(f"git merge-base {head_sha} {args.base_branch}")
+        git_command = shlex.split(
+            f"git merge-base {branch_ref_sha} {args.base_branch}"
+        )
         merge_base = _subprocess_runner_capture(git_command)[:8]
 
         with NamedTemporaryFile("w") as hashfile:
-            hashfile.writelines([merge_base, "\n", head_sha])
+            hashfile.writelines([merge_base, "\n", branch_ref_sha])
             hashfile.flush()
             commit_range = f"HASHFILE:{hashfile.name}"
             asv_command = shlex.split(ASV_HARNESS.format(posargs=commit_range))
             _subprocess_runner([*asv_command, *args.asv_args], asv=True)
 
-        _asv_compare(merge_base, head_sha)
+        _asv_compare(merge_base, branch_ref_sha)
 
 
 class _CSPerf(_SubParserGenerator, ABC):
@@ -651,6 +669,7 @@ class TrialRun(_SubParserGenerator):
 
 class Validate(_SubParserGenerator):
     name = "validate"
+    allow_asv_passthrough = False
     description = (
         "Quickly check that the benchmark architecture works as intended with "
         "the current codebase. Things that are checked: env creation/update, "
@@ -689,12 +708,9 @@ class Validate(_SubParserGenerator):
     def add_arguments(self) -> None:
         pass
 
-    def add_asv_arguments(self) -> None:
-        pass
-
-
 class GhPost(_SubParserGenerator):
     name = "_gh_post"
+    allow_asv_passthrough = False
     description = (
         "Used by GitHub Actions to post benchmark reports that were prepared "
         "during previous actions. Separated to comply with GitHub's security "
@@ -710,10 +726,6 @@ class GhPost(_SubParserGenerator):
 
     def add_arguments(self) -> None:
         pass
-
-    def add_asv_arguments(self) -> None:
-        pass
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -751,7 +763,10 @@ def main() -> None:
     for gen in parser_generators:
         _ = gen(subparsers).subparser
 
-    parsed = parser.parse_args()
+    parsed, unknown_args = parser.parse_known_args()
+    if unknown_args and not parsed.allow_asv_passthrough:
+        parser.error(f"unrecognized arguments: {' '.join(unknown_args)}")
+    parsed.asv_args = unknown_args
     parsed.func(parsed)
 
 
