@@ -62,6 +62,13 @@ def test_message_names_the_package_and_the_version_floor():
     assert "3.0.8" in _MISSING_MESSAGE
 
 
+def test_the_message_covers_saving_as_well_as_loading():
+    # `iris.save` raises this one too, so it cannot be worded as a loading
+    # failure: a user who was saving would be told about the wrong half of
+    # the package.
+    assert "load" not in _MISSING_MESSAGE
+
+
 def test_iris_load_reports_it_when_zarr_is_missing(tmp_path):
     store = tmp_path / "s.zarr"
     store.mkdir()
