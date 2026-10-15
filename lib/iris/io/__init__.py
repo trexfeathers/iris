@@ -75,7 +75,17 @@ _savers = _SaversDict()
 
 #: Modules whose `save` takes a CubeList directly, rather than one cube at a
 #: time with `append=True`. One line per format.
-_CUBELIST_SAVER_MODULES = frozenset({"iris.fileformats.netcdf.saver"})
+#:
+#: The Zarr entry names the package, `iris.fileformats.zarr`, rather than
+#: `iris.fileformats.zarr.saver`: the function registered in `_savers` is the
+#: `_save_cubes` shim defined in the package's `__init__.py`, and dispatch
+#: reads that function's `__module__`, not the module it forwards to.
+_CUBELIST_SAVER_MODULES = frozenset(
+    {
+        "iris.fileformats.netcdf.saver",
+        "iris.fileformats.zarr",
+    }
+)
 
 
 def run_callback(callback, cube, field, filename):
@@ -426,13 +436,14 @@ def _grib_save(cube, target, append=False, **kwargs):
 
 
 def _check_init_savers():
-    from iris.fileformats import netcdf, pp
+    from iris.fileformats import netcdf, pp, zarr
 
     if "pp" not in _savers:
         _savers.update(
             {
                 "pp": pp.save,
                 "nc": netcdf.save,
+                "zarr": zarr._save_cubes,
                 "dot": _dot_save,
                 "dotpng": _dot_save_png,
                 "grib2": _grib_save,
