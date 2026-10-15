@@ -15,12 +15,14 @@ class MinimalVariable(CFDatasetVariable):
 
     name = "air_temperature"
     location = "<memory>"
+    format = "NETCDF4"
     dimensions = ("time", "lat")
     shape = (3, 4)
     dtype = np.dtype("f4")
     size = 12
     fill_value = None
     chunking = None
+    encoding: dict = {}
     attributes: dict = {}
 
     def __getitem__(self, keys):
@@ -46,6 +48,7 @@ class MinimalDataset(CFDataset):
     variables: dict = {}
     dimensions: dict = {}
     attributes: dict = {}
+    encoding: dict = {}
 
     def __init__(self):
         self.closes = 0
@@ -83,12 +86,14 @@ class TestAbstractness:
         [
             "name",
             "location",
+            "format",
             "dimensions",
             "shape",
             "dtype",
             "size",
             "fill_value",
             "chunking",
+            "encoding",
             "attributes",
             "ndim",
             "__getitem__",
@@ -112,6 +117,7 @@ class TestAbstractness:
             "variables",
             "dimensions",
             "attributes",
+            "encoding",
             "create_dimension",
             "create_variable",
             "supports_dtype",
