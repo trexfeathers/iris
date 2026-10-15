@@ -228,6 +228,7 @@ lib/iris/fileformats/
         __init__.py      # NEW  public: load_cubes, save, Saver
         _dataset.py      # NEW  ZarrDataset, ZarrDatasetVariable
         _decode.py       # NEW  CF masking and unpacking that netCDF4 does for free
+        _encode.py       # NEW  CF packing and attribute conversion that netCDF4 does for free
         loader.py        # NEW
         saver.py         # NEW
 ```
@@ -2136,7 +2137,7 @@ else, and can land beside any of the others.
 | 3 | Relocate the CF loader | Merged | [#7316](https://github.com/SciTools/iris/pull/7316) |
 | 4 | Zarr loading | In review | [#7336](https://github.com/SciTools/iris/pull/7336) |
 | 5 | Relocate the CF saver | In review | [#7338](https://github.com/SciTools/iris/pull/7338) |
-| 6 | Zarr saving | Drafted | `zarr-io-pr-6` |
+| 6 | Zarr saving | Built, awaiting PR 4, 5 | `zarr-io-pr-6` branch, on `zarr-io-pr-4-5-base` |
 | 7 | Real-world test data and benchmarks | Not started | — |
 | — | **Merge back** `brownfield` → `main`: closing keywords, changelog fragments, docs | Not started | — |
 
@@ -2852,4 +2853,4 @@ endpoint is documented as closing on **30 September 2026** (§8).
 | 2026-10-14 | The three `getattr` anti-patterns removed from `lib/iris/AGENTS.md`, and the passages in §3 and §4.3 that leaned on them rewritten to stand on their own. No design change. |
 | 2026-10-14 | Actioned the Codex review of PR 4. Four findings, all reproduced and fixed: the `(name, size)` rule extended through coordinate attachment (§4.4); vector `missing_value` decoded (§4.4); chunks sized on the decoded dtype, including under `CHUNK_CONTROL.as_dask()` (§4.4); the `ZarrStore` element ruled out when a file handle is supplied (§4.7). |
 | 2026-10-14 | PR 5 raised. §5 records the shape the saver relocation takes - `CFSaver` and the four hooks - and §12.3 records the `NETCDF3_64BIT` defect found while doing it. §12.4 records what the relocation leaves netCDF-specific inside `cf/saver.py`, and §12.1 corrected to Merged for #7316 and #7333. |
-| 2026-10-15 | PR 6 built, on a branch merging PR 4 and PR 5. Grid-mapping writing made store-agnostic through a fifth hook (Q8 unblocked, not closed); `_attribute_handlers` relocated to `cf/`; `zarr/_encode.py` added to §4.1; `missing_value` separated from `_FillValue` on the write side; the default fill made netCDF's for every dtype; the write-alignment invariant enforced by rechunking at write time. Fourteen decisions logged. |
+| 2026-10-15 | PR 6 built, on a branch merging PR 4 and PR 5. Grid-mapping writing made store-agnostic through a fifth hook (Q8 unblocked, not closed); `_attribute_handlers` relocated to `cf/`; `zarr/_encode.py` added to §4.1; `missing_value` separated from `_FillValue` on the write side; the default fill made netCDF's for every dtype; the write-alignment invariant enforced by rechunking at write time. Fifteen decisions logged. |
