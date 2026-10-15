@@ -2,22 +2,25 @@
 #
 # This file is part of Iris and is released under the BSD license.
 # See LICENSE in the root of the repository for full licensing details.
-"""Both Zarr load routes report a clear error when ``zarr`` cannot be used.
+"""Every Zarr route reports a clear error when ``zarr`` cannot be used.
 
 ``iris.load`` reaches :mod:`iris.fileformats.zarr` through
 :func:`iris.fileformats._load_zarr`; the Zarr page of the user manual also
 tells a reader to call :func:`iris.fileformats.zarr.load_cubes` directly, for
-the ``group=`` keyword. Both must raise the same ``ImportError``, naming the
-package and the version floor, whether ``zarr`` is missing entirely or merely
-too old.
+the ``group=`` keyword; and ``iris.save`` reaches it through the
+``_save_cubes`` shim. All three must raise the same ``ImportError``, naming
+the package and the version floor, whether ``zarr`` is missing entirely or
+merely too old.
 """
 
 import subprocess
 import sys
 
+import numpy as np
 import pytest
 
 import iris
+from iris.cube import Cube
 import iris.fileformats.zarr as zarr_package
 from iris.fileformats.zarr import _MISSING_MESSAGE
 
@@ -94,6 +97,24 @@ except ImportError as exception:
     assert _run(probe) == _MISSING_MESSAGE
 
 
+def test_iris_save_reports_it_when_zarr_is_missing(tmp_path):
+    probe = (
+        _BLOCK_ZARR
+        + f"""
+import numpy as np
+import iris
+from iris.cube import Cube
+
+cube = Cube(np.arange(4, dtype=np.float32), var_name="a")
+try:
+    iris.save(cube, {str(tmp_path / "out.zarr")!r})
+except ImportError as exception:
+    print(exception)
+"""
+    )
+    assert _run(probe) == _MISSING_MESSAGE
+
+
 def test_iris_load_reports_it_when_zarr_is_too_old(monkeypatch, tmp_path):
     """Zarr 2.x imports fine, so only a version check catches it.
 
@@ -116,4 +137,21 @@ def test_load_cubes_reports_it_when_zarr_is_too_old(monkeypatch):
 
     with pytest.raises(ImportError) as excinfo:
         zarr_package.load_cubes("irrelevant")
+    assert str(excinfo.value) == _MISSING_MESSAGE
+
+
+def test_iris_save_reports_it_when_zarr_is_too_old(monkeypatch, tmp_path):
+    """The save path must use the same version gate as the load path.
+
+    ``_save_cubes`` reaches :func:`iris.fileformats.zarr.saver.save` with a
+    plain ``from .saver import save``, which bypasses ``__getattr__`` and
+    the version check it runs. Without its own call to
+    ``_check_zarr_version``, an installation with too old a zarr would
+    write a complete store instead of raising.
+    """
+    monkeypatch.setattr(zarr_package.importlib.metadata, "version", _report_old_zarr)
+    cube = Cube(np.arange(4, dtype=np.float32), var_name="a")
+
+    with pytest.raises(ImportError) as excinfo:
+        iris.save(cube, tmp_path / "out.zarr")
     assert str(excinfo.value) == _MISSING_MESSAGE
