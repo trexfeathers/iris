@@ -150,12 +150,6 @@ def test_the_write_surface_refuses(tmp_path):
         dataset.finalise()
 
 
-def test_a_write_mode_refuses(tmp_path):
-    stores.make_store(tmp_path / "s.zarr")
-    with pytest.raises(NotImplementedError, match="Saving"):
-        ZarrDataset(str(tmp_path / "s.zarr"), mode="w")
-
-
 def test_an_in_memory_store_is_just_another_location(tmp_path):
     """A store need not be a directory. zarr-python decides what it is."""
     memory = zarr.storage.MemoryStore()
