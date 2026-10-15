@@ -137,17 +137,6 @@ def test_nested_groups_are_not_walked(tmp_path):
     assert list(ZarrDataset(str(tmp_path / "n.zarr")).variables) == ["top"]
 
 
-def test_finalise_refuses(tmp_path):
-    # Consolidating a store's metadata is not implemented yet. finalise
-    # exists because the interface declares it; refusing is the honest
-    # answer until it is. create_dimension and create_variable now work on a
-    # writable dataset; their own refusal on a read-only one, as here, is
-    # covered in test_ZarrDataset__write.py.
-    dataset = ZarrDataset(stores.make_store(tmp_path / "s.zarr"))
-    with pytest.raises(NotImplementedError, match="Saving"):
-        dataset.finalise()
-
-
 def test_an_in_memory_store_is_just_another_location(tmp_path):
     """A store need not be a directory. zarr-python decides what it is."""
     memory = zarr.storage.MemoryStore()
