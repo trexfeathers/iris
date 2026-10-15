@@ -29,14 +29,10 @@ Making those writes store-agnostic is its own piece of work -- see Q8 in §12.3
 of the native Zarr I/O design,
 ``docs/superpowers/specs/2026-09-21-zarr-io-design.md``.
 
-``ATTRIBUTE_HANDLERS`` is imported from the netCDF package, which imports this
-module back. The two-way import survives because ``_attribute_handlers``
-imports nothing from :mod:`iris.fileformats.cf`. This module's body runs while
-the netCDF package is itself part-way through importing, so a netCDF submodule
-that reached back here would find this module half-built. The handlers
-serialise the Iris-only attribute types that every CF store needs - STASH,
-GRIB_PARAM, ukmo__process_flags - so they want relocating here. The load rules
-read them too, which makes that a move of its own.
+``ATTRIBUTE_HANDLERS`` lives beside this module, in
+:mod:`iris.fileformats.cf._attribute_handlers`. The handlers serialise the
+Iris-only attribute types that every CF store needs - STASH, GRIB_PARAM,
+ukmo__process_flags - and the netCDF load rules read them from there too.
 
 See : `CF Conventions <https://cfconventions.org/>`_.
 
@@ -77,12 +73,10 @@ from iris.coords import (
 )
 import iris.exceptions
 from iris.fileformats.cf.dataset import CFDatasetVariable
-
-# The one place the generic saver still reaches into the netCDF package. The
-# module docstring has the import cycle this closes, and why it is still here.
-from iris.fileformats.netcdf._attribute_handlers import ATTRIBUTE_HANDLERS
 import iris.util
 import iris.warnings
+
+from ._attribute_handlers import ATTRIBUTE_HANDLERS
 
 if TYPE_CHECKING:
     from iris.cube import Cube
