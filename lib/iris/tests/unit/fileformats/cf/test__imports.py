@@ -13,6 +13,12 @@ reason.
 They exercise one order, not nine. Importing anything under
 ``iris.fileformats`` runs that package's ``__init__`` first, and that imports
 the netCDF package, so every case here takes the same path.
+
+``_attribute_handlers`` imports :mod:`iris.fileformats.pp`, so the CF package
+now reaches the PP package while the ``iris.fileformats`` package is itself
+part-way through importing. That was already true of the netCDF package, which
+is where this module used to live and which ``iris.fileformats.__init__``
+imports before ``pp``.
 """
 
 import subprocess
@@ -25,6 +31,7 @@ MODULES = [
     "iris.fileformats.cf.dataset",
     "iris.fileformats.cf.loader",
     "iris.fileformats.cf.saver",
+    "iris.fileformats.cf._attribute_handlers",
     "iris.fileformats.cf._dask_locks",
     "iris.fileformats.netcdf",
     "iris.fileformats.netcdf._dataset",

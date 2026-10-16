@@ -12,31 +12,32 @@
 Everything about writing a cube that does not depend on what it is written
 into. The CF data model is here - dimension naming, coordinate and bounds
 variables, cell methods, grid mappings, meshes, attribute compliance. Every
-storage call goes through :class:`~iris.fileformats.cf.dataset.CFDataset`, with
-one exception: ``_add_grid_mapping_to_dataset``.
+storage call goes through :class:`~iris.fileformats.cf.dataset.CFDataset`,
+except where a store's own ``_grid_mapping_writer`` hands back something
+that is not part of it; netCDF's override does that, and every other
+store's does not.
 
 A format supplies a subclass of :class:`CFSaver` holding its own vocabulary of
-storage keywords, and whatever of the four hooks it needs:
-``_create_string_variable``, ``_backend_write``, ``_flush_before_close`` and
-``_patch_dataset``. :mod:`iris.fileformats.netcdf.saver` is one such subclass.
+storage keywords, and whatever of the five hooks it needs:
+``_create_string_variable``, ``_backend_write``, ``_flush_before_close``,
+``_patch_dataset`` and ``_grid_mapping_writer``. :mod:`iris.fileformats.netcdf.saver`
+is one such subclass.
 
-Two things here are still netCDF-specific.
+Nothing here is netCDF-specific any longer: the last thing that was is now a
+hook like the rest.
 
-``_add_grid_mapping_to_dataset`` writes the CF grid-mapping parameters onto a
-netCDF4 variable, not through the ``attributes`` mapping. A subclass backed by
-any other store fails there, for every cube that has a coordinate system.
-Making those writes store-agnostic is its own piece of work -- see Q8 in §12.3
-of the native Zarr I/O design,
-``docs/superpowers/specs/2026-09-21-zarr-io-design.md``.
+``_add_grid_mapping_to_dataset`` writes the CF grid-mapping parameters by plain
+attribute assignment, to whatever ``_grid_mapping_writer`` hands back. netCDF
+hands back its own variable, because what that does to the type of each
+attribute in the file is long-standing behaviour and not this module's to
+change -- see Q8 in §12.3 of the native Zarr I/O design,
+``docs/superpowers/specs/2026-09-21-zarr-io-design.md``. Every other store gets
+a writer onto the ``attributes`` mapping.
 
-``ATTRIBUTE_HANDLERS`` is imported from the netCDF package, which imports this
-module back. The two-way import survives because ``_attribute_handlers``
-imports nothing from :mod:`iris.fileformats.cf`. This module's body runs while
-the netCDF package is itself part-way through importing, so a netCDF submodule
-that reached back here would find this module half-built. The handlers
-serialise the Iris-only attribute types that every CF store needs - STASH,
-GRIB_PARAM, ukmo__process_flags - so they want relocating here. The load rules
-read them too, which makes that a move of its own.
+``ATTRIBUTE_HANDLERS`` lives beside this module, in
+:mod:`iris.fileformats.cf._attribute_handlers`. The handlers serialise the
+Iris-only attribute types that every CF store needs - STASH, GRIB_PARAM,
+ukmo__process_flags - and the netCDF load rules read them from there too.
 
 See : `CF Conventions <https://cfconventions.org/>`_.
 
@@ -55,6 +56,7 @@ from dask.delayed import Delayed
 import numpy as np
 
 from iris import FUTURE
+from iris._deprecation import warn_deprecated
 from iris._lazy_data import _co_realise_lazy_arrays, is_lazy_data
 from iris.aux_factory import (
     AtmosphereSigmaFactory,
@@ -77,12 +79,10 @@ from iris.coords import (
 )
 import iris.exceptions
 from iris.fileformats.cf.dataset import CFDatasetVariable
-
-# The one place the generic saver still reaches into the netCDF package. The
-# module docstring has the import cycle this closes, and why it is still here.
-from iris.fileformats.netcdf._attribute_handlers import ATTRIBUTE_HANDLERS
 import iris.util
 import iris.warnings
+
+from ._attribute_handlers import ATTRIBUTE_HANDLERS
 
 if TYPE_CHECKING:
     from iris.cube import Cube
@@ -287,6 +287,198 @@ class SaverFillValueWarning(iris.warnings.IrisSaverFillValueWarning):
 
     # TODO: remove at the next major release.
     pass
+
+
+def marshal_attributes(cubes, local_keys, format_name):
+    """Decide which cube attributes a store holds globally, and which locally.
+
+    A store holds one value of a global attribute, and a list of cubes may
+    carry several. Settling that is cube logic, not storage logic, so every
+    :class:`CFSaver` subclass's own ``save`` function calls this and nothing
+    does it twice.
+
+    Which half of this does the work depends on
+    :attr:`iris.FUTURE.save_split_attrs`.
+
+    * **Enabled.** :meth:`CFSaver.write` writes no global attributes at all,
+      and the caller writes the returned `global_attributes` once, after the
+      last cube. An attribute the cubes disagree about cannot be global, so
+      it is demoted to a local attribute on each cube - on a *copy* of each
+      cube, so that the caller's own cubes are untouched.
+    * **Legacy.** :meth:`CFSaver.write` writes each cube's global attributes
+      as it goes, so the returned `global_attributes` is empty and the work
+      is to extend `local_keys` with every attribute the cubes do not all
+      agree on. Without that, one store-wide value would silently become
+      whichever cube was written last.
+
+    Parameters
+    ----------
+    cubes : :class:`iris.cube.CubeList`
+        The cubes about to be saved.
+    local_keys : iterable of str or None
+        Attribute names the caller asked to be local to a data variable.
+        Ignored when split-attribute saving is enabled, which is what makes
+        the keyword deprecated.
+    format_name : str
+        How to name the target format in the legacy mode's deprecation
+        warning, e.g. ``"netcdf"``.
+
+    Returns
+    -------
+    cubes : :class:`iris.cube.CubeList`
+        The cubes to save, which are the ones passed in unless an attribute
+        had to be demoted.
+    local_keys : set of str
+        To pass to each :meth:`CFSaver.write` call.
+    global_attributes : dict
+        To write once, after the last cube. Empty in the legacy mode.
+
+    Warns
+    -----
+    IrisSaveWarning
+        Naming the global attributes demoted to local ones, and any that a
+        local attribute of the same name blocked entirely.
+    IrisDeprecation
+        In the legacy mode, which is deprecated since Iris 3.8.
+
+    """
+    # TODO: when iris.FUTURE.save_split_attrs is removed, the whole legacy
+    #  half of this function goes with it, along with `local_keys` and
+    #  `format_name`.
+    global_attributes: dict = {}
+
+    if FUTURE.save_split_attrs:
+        # 'local_keys' is not used in this case.
+        local_keys = set()
+
+        # Find any collisions in the cube global attributes and "demote" all those
+        # to local attributes (where possible, else warn they are lost).
+        # N.B. "collision" includes when not all cubes *have* that attribute.
+        global_names = set()
+        for cube in cubes:
+            global_names |= set(cube.attributes.globals.keys())
+
+        # Find any global attributes which are not the same on *all* cubes.
+        def attr_values_equal(val1, val2):
+            # An equality test which also works when some values are numpy arrays (!)
+            return iris.util._attribute_equal(val1, val2)
+
+        cube0 = cubes[0]
+        invalid_globals = set(
+            [
+                attrname
+                for attrname in global_names
+                if not all(
+                    attr_values_equal(
+                        cube.attributes.globals.get(attrname),
+                        cube0.attributes.globals.get(attrname),
+                    )
+                    for cube in cubes[1:]
+                )
+            ]
+        )
+
+        # Establish all the global attributes which we will write to the file (at end).
+        global_attributes = {
+            attr: cube0.attributes.globals.get(attr)
+            for attr in global_names - invalid_globals
+        }
+        if invalid_globals:
+            # Some cubes have different global attributes: modify cubes as required.
+            warnings.warn(
+                f"Saving the cube global attributes {sorted(invalid_globals)} as local "
+                "(i.e. data-variable) attributes, where possible, since they are not "
+                "the same on all input cubes.",
+                category=iris.warnings.IrisSaveWarning,
+            )
+            cubes = cubes.copy()  # avoiding modifying the actual input arg.
+            for i_cube in range(len(cubes)):
+                # We iterate over cube *index*, so we can replace the list entries with
+                # with cube *copies* -- just to avoid changing our call args.
+                cube = cubes[i_cube]
+                demote_attrs = set(cube.attributes.globals) & invalid_globals
+                if any(demote_attrs):
+                    # Catch any demoted attrs where there is already a local version
+                    blocked_attrs = demote_attrs & set(cube.attributes.locals)
+                    if blocked_attrs:
+                        warnings.warn(
+                            f"Global cube attributes {sorted(blocked_attrs)} "
+                            f'of cube "{cube.name()}" were not saved, overlaid '
+                            "by existing local attributes with the same names.",
+                            category=iris.warnings.IrisSaveWarning,
+                        )
+                    demote_attrs -= blocked_attrs
+                    if demote_attrs:
+                        # This cube contains some 'demoted' global attributes.
+                        # Replace input cube with a copy, so we can modify attributes.
+                        cube = cube.copy()
+                        cubes[i_cube] = cube
+                        for attr in demote_attrs:
+                            # move global to local
+                            value = cube.attributes.globals.pop(attr)
+                            cube.attributes.locals[attr] = value
+
+    else:
+        # Legacy mode: calculate "local_keys" to control which attributes are local
+        # and which global.
+        message = (
+            f"Saving to {format_name} with legacy-style attribute handling for "
+            "backwards compatibility.\n"
+            "This mode is deprecated since Iris 3.8, and will eventually be removed.\n"
+            "Please consider enabling the new split-attributes handling mode, by "
+            "setting 'iris.FUTURE.save_split_attrs = True'."
+        )
+        warn_deprecated(message)
+
+        if local_keys is None:
+            local_keys = set()
+        else:
+            local_keys = set(local_keys)
+
+        # Determine the attribute keys that are common across all cubes and
+        # thereby extend the collection of local_keys for attributes
+        # that should be attributes on data variables.
+        attributes = cubes[0].attributes
+        common_keys = set(attributes)
+        for cube in cubes[1:]:
+            keys = set(cube.attributes)
+            local_keys.update(keys.symmetric_difference(common_keys))
+            common_keys.intersection_update(keys)
+            different_value_keys = []
+            for key in common_keys:
+                if not iris.util._attribute_equal(
+                    attributes[key], cube.attributes[key]
+                ):
+                    different_value_keys.append(key)
+            common_keys.difference_update(different_value_keys)
+            local_keys.update(different_value_keys)
+
+    return cubes, local_keys, global_attributes
+
+
+class _GridMappingAttributeWriter:
+    """An assignment target that writes into a variable's attributes.
+
+    :meth:`CFSaver._add_grid_mapping_to_dataset` sets sixty-three CF
+    grid-mapping parameters by plain attribute assignment. On netCDF those
+    assignments go to the netCDF4 variable itself and have done since long
+    before the CF layer existed, and that decides how each one is typed in
+    the file. Regularising it is its own piece of work -- see Q8 in §12.3 of
+    the native Zarr I/O design,
+    ``docs/superpowers/specs/2026-09-21-zarr-io-design.md``. Every other store
+    needs them to arrive in the ``attributes`` mapping instead, and this is the
+    object that puts them there.
+
+    """
+
+    def __init__(self, cf_var):
+        # Bypass this class's own __setattr__, which would otherwise write
+        # the variable into the variable.
+        object.__setattr__(self, "_cf_var", cf_var)
+
+    def __setattr__(self, name, value):
+        """Write one grid-mapping parameter into the variable's attributes."""
+        self._cf_var.attributes[name] = value
 
 
 class CFSaver:
@@ -1875,12 +2067,11 @@ class CFSaver:
         cf_var_grid = self._dataset.create_variable(cs.grid_mapping_name, np.int32)
         cf_var_grid.attributes["grid_mapping_name"] = cs.grid_mapping_name
 
-        # Assignments to properties of ``grid_variable`` bypass the ASCII-to-bytes
-        # coercion that .attributes applies, so moving them there would change
-        # the file. They need the netCDF4 variable itself. Not
-        # deprecated_netcdf_member(), so a store with no netCDF4 object behind it
-        # raises a bare AttributeError here.
-        grid_variable = cf_var_grid.variable
+        # The 63 assignments below decide how each parameter is typed in the
+        # file, and on netCDF they go to the netCDF4 variable itself, exactly
+        # as they always have; see Q8 in the design document. Every other
+        # store gets a writer onto `.attributes`.
+        grid_variable = self._grid_mapping_writer(cf_var_grid)
 
         def add_ellipsoid(ellipsoid):
             grid_variable.longitude_of_prime_meridian = (
@@ -2432,6 +2623,24 @@ class CFSaver:
 
         """
         return False
+
+    def _grid_mapping_writer(self, cf_var):
+        """Return the object the grid-mapping parameters are assigned to.
+
+        Parameters
+        ----------
+        cf_var : :class:`~iris.fileformats.cf.dataset.CFDatasetVariable`
+            The grid-mapping variable, newly created and otherwise empty.
+
+        Returns
+        -------
+        object
+            Something that accepts a plain attribute assignment per CF
+            grid-mapping parameter. Here, a writer onto ``cf_var.attributes``.
+            A store that types those attributes some other way overrides this.
+
+        """
+        return _GridMappingAttributeWriter(cf_var)
 
     def _lazy_stream_data(
         self,

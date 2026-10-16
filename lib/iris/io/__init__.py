@@ -75,7 +75,17 @@ _savers = _SaversDict()
 
 #: Modules whose `save` takes a CubeList directly, rather than one cube at a
 #: time with `append=True`. One line per format.
-_CUBELIST_SAVER_MODULES = frozenset({"iris.fileformats.netcdf.saver"})
+#:
+#: The Zarr entry names the package, `iris.fileformats.zarr`, rather than
+#: `iris.fileformats.zarr.saver`: the function registered in `_savers` is the
+#: `_save_cubes` shim defined in the package's `__init__.py`, and dispatch
+#: reads that function's `__module__`, not the module it forwards to.
+_CUBELIST_SAVER_MODULES = frozenset(
+    {
+        "iris.fileformats.netcdf.saver",
+        "iris.fileformats.zarr",
+    }
+)
 
 
 def run_callback(callback, cube, field, filename):
@@ -426,13 +436,14 @@ def _grib_save(cube, target, append=False, **kwargs):
 
 
 def _check_init_savers():
-    from iris.fileformats import netcdf, pp
+    from iris.fileformats import netcdf, pp, zarr
 
     if "pp" not in _savers:
         _savers.update(
             {
                 "pp": pp.save,
                 "nc": netcdf.save,
+                "zarr": zarr._save_cubes,
                 "dot": _dot_save,
                 "dotpng": _dot_save_png,
                 "grib2": _grib_save,
@@ -497,7 +508,7 @@ def find_saver(filespec):
 def save(source, target, saver=None, **kwargs):
     """Save one or more Cubes to file (or other writeable).
 
-    Iris currently supports four file formats for saving. Three are
+    Iris currently supports five file formats for saving. Four are
     recognised by filename extension:
 
     * **netCDF** - the Unidata network Common Data Format,
@@ -506,8 +517,11 @@ def save(source, target, saver=None, **kwargs):
       see :func:`iris_grib.save_grib2`.
     * **PP** - the Met Office UM Post Processing Format,
       see :func:`iris.fileformats.pp.save`
+    * **Zarr** - a native Zarr version 3 store, written through zarr-python,
+      see :func:`iris.fileformats.zarr.saver.save`. See
+      :doc:`/user_manual/explanation/zarr_io` for more.
 
-    The fourth format is recognised differently:
+    The fifth format is recognised differently:
 
     * **Zarr (via NcZarr)** - "The open foundation for chunked, compressed,
       N-dimensional

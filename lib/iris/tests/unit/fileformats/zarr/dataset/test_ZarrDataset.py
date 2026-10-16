@@ -4,7 +4,6 @@
 # See LICENSE in the root of the repository for full licensing details.
 """Unit tests for :class:`iris.fileformats.zarr._dataset.ZarrDataset`."""
 
-import numpy as np
 import pytest
 import zarr
 
@@ -136,24 +135,6 @@ def test_nested_groups_are_not_walked(tmp_path):
     stores.make_array(root.create_group("sub"), "inner", (2,), "f8", 3)
 
     assert list(ZarrDataset(str(tmp_path / "n.zarr")).variables) == ["top"]
-
-
-def test_the_write_surface_refuses(tmp_path):
-    # Saving to Zarr is not implemented. The members exist because the
-    # interface declares them; refusing is the honest answer.
-    dataset = ZarrDataset(stores.make_store(tmp_path / "s.zarr"))
-    with pytest.raises(NotImplementedError, match="Saving"):
-        dataset.create_dimension("t", 3)
-    with pytest.raises(NotImplementedError, match="Saving"):
-        dataset.create_variable("v", np.dtype("f4"), ("t",))
-    with pytest.raises(NotImplementedError, match="Saving"):
-        dataset.finalise()
-
-
-def test_a_write_mode_refuses(tmp_path):
-    stores.make_store(tmp_path / "s.zarr")
-    with pytest.raises(NotImplementedError, match="Saving"):
-        ZarrDataset(str(tmp_path / "s.zarr"), mode="w")
 
 
 def test_an_in_memory_store_is_just_another_location(tmp_path):
